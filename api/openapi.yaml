@@ -1,0 +1,468 @@
+openapi: 3.0.3
+info:
+  title: Greenlit API
+  version: 0.1.0
+paths:
+  /api/flags/:
+    get:
+      operationId: flags_retrieve
+      description: Which modules are on in this deployment, so the app can hide the
+        rest.
+      tags:
+      - flags
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Flags'
+          description: ''
+  /api/health/:
+    get:
+      operationId: health_retrieve
+      description: Uptime check target (ARCH §8). No data access, so it works before
+        org scope exists.
+      tags:
+      - health
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+          description: ''
+  /api/invites/:
+    post:
+      operationId: invites_create
+      description: Email an invitation to join this organisation with a chosen role.
+      tags:
+      - invites
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Invite'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Invite'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Invite'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invitation'
+          description: ''
+  /api/invites/accept/:
+    post:
+      operationId: invites_accept_create
+      description: Accept an invitation from the emailed link. Needs a signed-in user
+        with the invited email.
+      tags:
+      - invites
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptInvite'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AcceptInvite'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AcceptInvite'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganisationCreated'
+          description: ''
+  /api/me/:
+    get:
+      operationId: me_retrieve
+      description: The signed-in user and their own memberships. Works before an organisation
+        is chosen.
+      tags:
+      - me
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+          description: ''
+  /api/members/:
+    get:
+      operationId: members_list
+      description: People in this organisation.
+      tags:
+      - members
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Member'
+          description: ''
+  /api/org/:
+    get:
+      operationId: org_retrieve
+      description: The organisation named by the X-Org header, with the caller's role
+        in it.
+      tags:
+      - org
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentOrganisation'
+          description: ''
+  /api/orgs/:
+    post:
+      operationId: orgs_create
+      description: Create an organisation. The caller becomes its owner.
+      tags:
+      - orgs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganisationCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrganisationCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrganisationCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganisationCreated'
+          description: ''
+  /api/projects/:
+    get:
+      operationId: projects_list
+      description: 'GET: projects this member can see. POST: create a project.'
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+    post:
+      operationId: projects_create
+      description: 'GET: projects this member can see. POST: create a project.'
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProjectCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProjectCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+  /api/projects/{key}/:
+    get:
+      operationId: projects_retrieve
+      description: One project, by key. A project the member cannot see is not found.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+components:
+  schemas:
+    AcceptInvite:
+      type: object
+      properties:
+        token:
+          type: string
+          maxLength: 200
+      required:
+      - token
+    CurrentOrganisation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+      required:
+      - id
+      - name
+      - role
+      - slug
+    Flags:
+      type: object
+      properties:
+        enabled:
+          type: array
+          items:
+            type: string
+      required:
+      - enabled
+    Health:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    Invitation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+      required:
+      - email
+      - expires_at
+      - id
+      - role
+    Invite:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+      required:
+      - email
+      - role
+    Me:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        memberships:
+          type: array
+          items:
+            $ref: '#/components/schemas/MembershipSummary'
+      required:
+      - email
+      - id
+      - memberships
+      - name
+    Member:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          type: string
+        status:
+          type: string
+      required:
+      - email
+      - name
+      - role
+      - status
+      - user_id
+    MembershipSummary:
+      type: object
+      properties:
+        organisation:
+          $ref: '#/components/schemas/OrganisationSummary'
+        role:
+          type: string
+        status:
+          type: string
+      required:
+      - organisation
+      - role
+      - status
+    OrganisationCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        slug:
+          type: string
+          maxLength: 40
+      required:
+      - name
+    OrganisationCreated:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        name:
+          type: string
+      required:
+      - id
+      - name
+      - slug
+    OrganisationSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        name:
+          type: string
+      required:
+      - id
+      - name
+      - slug
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        key:
+          type: string
+        name:
+          type: string
+        client_name:
+          type: string
+      required:
+      - client_name
+      - id
+      - key
+      - name
+    ProjectCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        key:
+          type: string
+          maxLength: 6
+        client_name:
+          type: string
+          maxLength: 200
+        member_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - key
+      - name
+    RoleEnum:
+      enum:
+      - owner
+      - admin
+      - qa_lead
+      - qa_engineer
+      - developer
+      - viewer
+      type: string
+      description: |-
+        * `owner` - Owner
+        * `admin` - Admin
+        * `qa_lead` - Qa Lead
+        * `qa_engineer` - Qa Engineer
+        * `developer` - Developer
+        * `viewer` - Viewer
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

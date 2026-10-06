@@ -1,0 +1,127 @@
+# Pull request pipeline (ARCH §7): lint and types, tests including the isolation proofs,
+# dependency and secret scanning, and migration checks.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          # The service user is the migration/owner role; the app role is created below.
+          POSTGRES_USER: greenlit_owner
+          POSTGRES_PASSWORD: greenlit_owner
+          POSTGRES_DB: greenlit
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U greenlit_owner" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      DJANGO_SECRET_KEY: ci-only-not-a-secret
+      DATABASE_URL: postgres://greenlit_owner:greenlit_owner@localhost:5432/greenlit
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+      - run: pip install -r requirements.txt
+
+      - name: Lint and format
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Type check
+        run: mypy apps config
+
+      - name: Migrations are complete
+        run: python manage.py makemigrations --check --dry-run
+      - name: Migrations never drop row-level security
+        run: |
+          if grep -rEi "drop policy|disable row level security|no force row level security" apps/*/migrations; then
+            echo "A migration removes row-level security. Remove it, or get a security review." >&2
+            exit 1
+          fi
+
+      - name: Create database roles
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          PGPASSWORD=greenlit_owner psql -h localhost -U greenlit_owner -d greenlit -v ON_ERROR_STOP=1 -f ../docker/postgres-init.sql
+      - name: Tests (unit, API, permissions, isolation)
+        run: pytest -q
+
+      - name: Dependency scan
+        run: pip-audit --progress-spinner off
+
+  api-types:
+    runs-on: ubuntu-latest
+    env:
+      CI: "true"
+      DJANGO_SECRET_KEY: ci-only-not-a-secret
+      DATABASE_URL: sqlite:///ci.db
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+      - run: pip install -r api/requirements.txt
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+      - name: API schema and generated types are up to date
+        run: pnpm check:api
+        working-directory: web
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm build
+      - name: Dependency scan
+        run: pnpm audit --audit-level high
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
