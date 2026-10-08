@@ -280,6 +280,7 @@ Greenlit holds client data for several companies at once, so tenant isolation an
 | Approve Won't fix or Deferred | Yes | Yes | Yes | No | No | No |
 | Sign off a release | Yes | Yes | Yes | No | No | No |
 | View plans, runs, defects, reports | Yes | Yes | Yes | Yes | Yes | Yes |
+| Re-run failed background jobs | Yes | Yes | No | No | No | No |
 
 **Other requirements**
 

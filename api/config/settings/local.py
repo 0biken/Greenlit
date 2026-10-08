@@ -21,3 +21,9 @@ FILE_STORAGE_LOCAL_ROOT = BASE_DIR / "var" / "files"  # noqa: F405
 MALWARE_SCANNER = "stub"
 
 FEATURE_FLAGS = ["all"]
+
+# No Redis needed on a developer machine: counters live in this process's memory.
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
+# No outside calls on a developer machine.
+BREACHED_PASSWORD_CHECK = False

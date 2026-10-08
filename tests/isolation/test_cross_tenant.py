@@ -15,6 +15,8 @@ from django.test import Client
 from apps.core import services
 from apps.core.models import (
     CounterKind,
+    Job,
+    JobState,
     Membership,
     MembershipStatus,
     Organisation,
@@ -59,7 +61,9 @@ def world():
             services.invite_member(owner_membership, org, f"invitee@{domain}", Role.VIEWER.value)
             next_number(shared.pk, org.pk, CounterKind.DEFECT)
             assert ProjectMember.objects.filter(user=engineer).exists()
+            job = Job.objects.create(org_id=org.id, kind="sample", state=JobState.DEAD)
         setattr(w, tag, org)
+        setattr(w, f"{tag}_job", job)
         setattr(w, f"{tag}_owner", owner)
         setattr(w, f"{tag}_engineer", engineer)
     return w
@@ -178,7 +182,10 @@ def test_no_alpha_response_contains_any_of_bravos_data(world):
         for route, view_cls in api_endpoints():
             if "get" not in methods_of(view_cls):
                 continue
-            response = client.get(url_for(route, {"key": "SHARED"}), headers={"X-Org": "alpha-iso"})
+            response = client.get(
+                url_for(route, {"key": "SHARED", "job_id": str(world.alpha_job.id)}),
+                headers={"X-Org": "alpha-iso"},
+            )
             text = response.content.decode(errors="replace")
             for marker in BRAVO_MARKERS:
                 assert marker not in text, f"GET {route} as {user.email} leaked {marker!r}"
@@ -193,7 +200,10 @@ def test_bravos_identifiers_are_not_found_under_alpha(world):
         for route, view_cls in api_endpoints():
             if "<" not in route or "get" not in methods_of(view_cls):
                 continue
-            response = client.get(url_for(route, {"key": "SECRTB"}), headers={"X-Org": "alpha-iso"})
+            response = client.get(
+                url_for(route, {"key": "SECRTB", "job_id": str(world.bravo_job.id)}),
+                headers={"X-Org": "alpha-iso"},
+            )
             assert response.status_code == 404, f"GET {route} with Bravo's key as {user.email}"
 
 

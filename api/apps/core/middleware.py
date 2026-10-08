@@ -11,8 +11,11 @@ view, after middleware, so it cannot be used for this.)
 """
 
 import logging
+import time
 from collections.abc import Callable
 
+from django.conf import settings
+from django.contrib.auth import logout
 from django.db import transaction
 from django.http import HttpRequest, HttpResponse, JsonResponse
 
@@ -76,3 +79,46 @@ class TenancyMiddleware:
         if membership is None:
             return None
         return org, membership
+
+
+class SecurityHeadersMiddleware:
+    """Headers Django does not add on its own (SEC §8).
+
+    The camera stays available to this site for photographing a retest on a phone (UX flow 2);
+    everything else a browser can grant is switched off.
+    """
+
+    PERMISSIONS_POLICY = (
+        "camera=(self), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+    )
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]):
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        response = self.get_response(request)
+        response.headers.setdefault("Permissions-Policy", self.PERMISSIONS_POLICY)
+        response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+        return response
+
+
+class SessionAbsoluteLimitMiddleware:
+    """End a session 30 days after sign-in, however active it has been (SEC §3).
+
+    Django's own expiry is a sliding 12-hour idle timeout. Together they give "12-hour idle
+    timeout, 30-day maximum". A session with no sign-in stamp is treated as expired.
+    """
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]):
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        if request.user.is_authenticated:
+            login_at = request.session.get("login_at")
+            expired = (
+                not isinstance(login_at, int)
+                or time.time() - login_at > settings.SESSION_ABSOLUTE_MAX_AGE
+            )
+            if expired:
+                logout(request)
+        return self.get_response(request)

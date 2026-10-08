@@ -13,6 +13,8 @@ from django.db import connection
 from django.test import Client
 
 from apps.core.models import (
+    Job,
+    JobState,
     Membership,
     MembershipStatus,
     Organisation,
@@ -45,6 +47,7 @@ SAMPLES = {
         "role": "viewer",
     },
     ("api/projects/", "post"): lambda: {"name": "Sample", "key": _letters(next(_counter))},
+    ("api/jobs/<uuid:job_id>/rerun/", "post"): lambda: {},
 }
 
 
@@ -71,12 +74,12 @@ def body_for(route: str, method: str):
     return sample()
 
 
-def call(client: Client, route: str, method: str, org_slug: str | None):
+def call(client: Client, route: str, method: str, org_slug: str | None, params=None):
     kwargs = {"headers": {"X-Org": org_slug}} if org_slug else {}
     body = body_for(route, method)
     if body is not None:
         kwargs.update(data=body, content_type="application/json")
-    return getattr(client, method)(url_for(route), **kwargs)
+    return getattr(client, method)(url_for(route, params), **kwargs)
 
 
 def _org_with_a_member_of_each_role():
@@ -93,7 +96,9 @@ def _org_with_a_member_of_each_role():
             # Everyone is on the sample project, so the matrix answer is not hidden by 404s.
             ProjectMember.objects.create(org_id=org.id, project=project, user=user)
             users[role] = user
-    return org, users
+        # A job that gave up, so re-running it is a valid request.
+        job = Job.objects.create(org_id=org.id, kind="sample", state=JobState.DEAD)
+    return org, users, {"job_id": str(job.id)}
 
 
 def _as_app_role():
@@ -117,12 +122,12 @@ def test_every_endpoint_declares_a_policy(route, view_cls):
 
 @pytest.mark.parametrize("route,view_cls,method,action", list(role_gated_calls()), ids=str)
 def test_each_role_gets_the_matrix_answer(route, view_cls, method, action):
-    org, users = _org_with_a_member_of_each_role()
+    org, users, params = _org_with_a_member_of_each_role()
     _as_app_role()
     for role, user in users.items():
         client = Client()
         client.force_login(user)
-        response = call(client, route, method, org.slug)
+        response = call(client, route, method, org.slug, params)
         if can(role, action):
             assert response.status_code < 400, (
                 f"{method.upper()} {route} as {role}: {response.status_code} {response.content!r}"
@@ -135,13 +140,13 @@ def test_each_role_gets_the_matrix_answer(route, view_cls, method, action):
 
 @pytest.mark.parametrize("route,view_cls,method,action", list(role_gated_calls()), ids=str)
 def test_without_an_organisation_or_membership_it_is_not_found(route, view_cls, method, action):
-    org, _ = _org_with_a_member_of_each_role()
+    org, _, params = _org_with_a_member_of_each_role()
     outsider = User.objects.create_user("outsider@table.example", "x" * 14)
     _as_app_role()
     client = Client()
     client.force_login(outsider)
-    assert call(client, route, method, None).status_code == 404
-    assert call(client, route, method, org.slug).status_code == 404
+    assert call(client, route, method, None, params).status_code == 404
+    assert call(client, route, method, org.slug, params).status_code == 404
 
 
 @pytest.mark.parametrize("route,view_cls", list(api_endpoints()), ids=lambda v: str(v))

@@ -187,6 +187,7 @@ Every outside service that touches customer data is a sub-processor and is liste
 | Email delivery | Names, emails, item titles in digests | No document contents in emails, only titles and links |
 | Error monitoring | Error traces | Personal data and document text scrubbed before sending |
 | Malware scanning | Uploaded files | Files not kept after scanning |
+| Breached-password check (Pwned Passwords range API) | The first 5 characters of a SHA-1 hash of a new password; no account or customer data | Hash prefix only (k-anonymity); the check fails open if the service is slow or down, so sign-up never depends on it |
 
 **Roadmap**
 

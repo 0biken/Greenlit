@@ -16,4 +16,8 @@ Spec-first project. [TASKS.md](TASKS.md) is the build checklist; the six `Greenl
 - Never connect the running app as the owner or a superuser. Jobs and scripts use `org_scope(org_id)` from `apps/core/tenancy.py`.
 - Every endpoint gets a row in the permission table and is covered by the isolation suite (TASKS M1-11, M1-15). Records the user cannot see return 404, never 403.
 - AI calls go only through `apps/ai`. Files go only through `apps/files`. Logs and error reports carry IDs, never document text.
+- Sign-in is allauth's headless API (docs/sign-in.md). Owners and admins must enrol in two-step verification before using an organisation (`ENFORCE_MFA_ROLES`); the test settings switch this off, and `tests/security/test_mfa.py` switches it on where it matters. Do not weaken it in `config/settings/base.py`; a test checks the default.
+- Tests run under `config.settings.test` (no counters stored). Tests of limits or lockouts use the `real_cache` fixture.
+- Every new `_allauth/` route must be reviewed and added to `EXPECTED_AUTH_ROUTES` in `tests/security/test_auth_surface.py`.
+- Slow work goes through `apps/core/jobs.py` (docs/jobs.md): job args are IDs only, and messages people see come from `JobFailure`.
 - New modules ship behind a flag from `apps/core/flags.py` (`flag_required("plan")`).

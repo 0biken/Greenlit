@@ -10,6 +10,7 @@ import secrets
 import uuid
 from datetime import timedelta
 
+from allauth.account.models import EmailAddress
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db import IntegrityError, transaction
@@ -158,6 +159,10 @@ def accept_invitation(user: User, token: str) -> Membership:
             or invitation.revoked_at is not None
             or invitation.expires_at < timezone.now()
             or invitation.email != user.email.lower()
+            # The invitation went to this address, so the account must have proved it owns it.
+            or not EmailAddress.objects.filter(
+                user=user, email__iexact=invitation.email, verified=True
+            ).exists()
         ):
             raise refusal
         org_id, role = invitation.org_id, invitation.role

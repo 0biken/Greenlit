@@ -6,6 +6,7 @@ import uuid
 from datetime import timedelta
 
 import pytest
+from allauth.account.models import EmailAddress
 from django.core import mail
 from django.db import connection
 from django.test import Client
@@ -49,8 +50,12 @@ def post(client: Client, url: str, body: dict, org: str | None = None):
     return client.post(url, data=body, content_type=JSON, headers=headers)
 
 
-def new_user(email: str, name: str = "") -> User:
-    return User.objects.create_user(email, "x" * 14, name=name)
+def new_user(email: str, name: str = "", verified: bool = True) -> User:
+    """A user whose address has been confirmed, as after sign-up (allauth stores the proof)."""
+    user = User.objects.create_user(email, "x" * 14, name=name)
+    # Sign-up always records the address; it counts only once the person has confirmed it.
+    EmailAddress.objects.create(user=user, email=user.email, verified=verified, primary=True)
+    return user
 
 
 def make_org(name: str, owner: User) -> Organisation:
@@ -186,6 +191,32 @@ def test_the_token_is_stored_only_as_a_hash(team):
     with org_scope(org.id):
         stored = Invitation.objects.get().token_hash
     assert token not in stored and len(stored) == 64
+
+
+def test_an_unverified_address_cannot_accept_an_invitation(team):
+    """Knowing the link is not enough: the account must have proved it owns the invited address."""
+    org, owner, _, capture = team
+    unverified = new_user("unverified@example.com", verified=False)
+    as_app_role()
+    with capture(execute=True):
+        invite(signed_in(owner), org, unverified.email)
+    token = token_from_outbox()
+    assert post(signed_in(unverified), "/api/invites/accept/", {"token": token}).status_code == 400
+    assert not Membership.all_objects.filter(user=unverified).exists()
+
+    EmailAddress.objects.filter(user=unverified).update(verified=True)
+    assert post(signed_in(unverified), "/api/invites/accept/", {"token": token}).status_code == 200
+
+
+def test_proving_a_different_address_does_not_help(team):
+    org, owner, _, capture = team
+    user = new_user("other-address@example.com", verified=False)
+    EmailAddress.objects.create(user=user, email="elsewhere@example.com", verified=True)
+    as_app_role()
+    with capture(execute=True):
+        invite(signed_in(owner), org, user.email)
+    answer = post(signed_in(user), "/api/invites/accept/", {"token": token_from_outbox()})
+    assert answer.status_code == 400
 
 
 def test_someone_else_cannot_use_the_invitation(team):

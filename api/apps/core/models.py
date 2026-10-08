@@ -205,3 +205,39 @@ class Invitation(TenantModel):
     accepted_at = models.DateTimeField(null=True, blank=True)
     revoked_at = models.DateTimeField(null=True, blank=True)
     invited_by = models.ForeignKey("core.User", on_delete=models.PROTECT, related_name="+")
+
+
+class JobState(models.TextChoices):
+    QUEUED = "queued"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"  # failed an attempt; another is scheduled
+    DEAD = "dead"  # gave up; an admin can re-run it
+
+
+class Job(TenantModel):
+    """Background work for one organisation (ARCH §6, DATA §3 `job`).
+
+    `args` hold IDs only and `error` holds an error class or a message written for people,
+    never document text (SEC §5).
+    """
+
+    kind = models.CharField(max_length=60)
+    args = models.JSONField(default=dict, blank=True)
+    state = models.CharField(max_length=20, choices=JobState.choices, default=JobState.QUEUED)
+    progress = models.JSONField(default=dict, blank=True)
+    error = models.CharField(max_length=300, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["org_id", "state", "created_at"])]
+
+
+class OrgRegistry(models.Model):
+    """Organisation IDs only, readable without a scope, so schedulers can fan out per
+    organisation (DATA §3). Filled by a database trigger on `organisation`; the app cannot
+    write it."""
+
+    organisation_id = models.UUIDField(primary_key=True)

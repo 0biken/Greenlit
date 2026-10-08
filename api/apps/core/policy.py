@@ -5,10 +5,11 @@ role logic. The checks run on the server in a fixed order, before any data is re
 
 1. Who are you?        a signed-in user (DRF `IsAuthenticated`);
 2. Which organisation? an active membership, resolved by the tenancy middleware, else 404;
-3. May you do this?    the role allows the action, else 403.
+3. Two-step?           owners and admins must have set it up, else 403 `mfa_required`;
+4. May you do this?    the role allows the action, else 403.
 
-A record the user cannot see is "not found", never "forbidden". Role denial is the only 403:
-the user can see the thing but may not do that to it.
+A record the user cannot see is "not found", never "forbidden". A 403 means the user can see
+the thing but may not do that to it: their role forbids it, or two-step verification is missing.
 """
 
 from enum import StrEnum
@@ -16,6 +17,7 @@ from enum import StrEnum
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import BasePermission, IsAuthenticated
 
+from apps.core.mfa import MfaRequired, needs_mfa_enrolment
 from apps.core.models import ProjectMember, Role
 
 
@@ -32,6 +34,7 @@ class Action(StrEnum):
     APPROVE_WONTFIX = "approve_wontfix"
     SIGN_OFF = "sign_off"
     VIEW = "view"
+    MANAGE_JOBS = "manage_jobs"  # re-run failed background jobs (everyone can watch progress)
 
 
 _OWNER = {Role.OWNER}
@@ -52,6 +55,7 @@ MATRIX: dict[Action, frozenset[str]] = {
     Action.APPROVE_WONTFIX: frozenset(_LEADS),
     Action.SIGN_OFF: frozenset(_LEADS),
     Action.VIEW: frozenset(_EVERYONE),
+    Action.MANAGE_JOBS: frozenset(_OWNER_ADMIN),
 }
 
 
@@ -84,6 +88,8 @@ class _Requires(BasePermission):
         membership = getattr(request._request, "membership", None)
         if membership is None:
             raise NotFound()  # no organisation named, or not a member of it
+        if needs_mfa_enrolment(request.user, membership.role):
+            raise MfaRequired()
         method = request.method.upper()
         action = self.actions.get(method) or (
             self.actions.get("GET") if method in ("HEAD", "OPTIONS") else None

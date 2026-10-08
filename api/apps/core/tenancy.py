@@ -74,3 +74,31 @@ def scoped(
         set_scope(org_id, user_id, invite_hash)
         yield
         restore_scope(previous)
+
+
+@contextmanager
+def worker_scope(org_id: UUID | str) -> Iterator[None]:
+    """Hold one organisation's scope on this connection for a whole background job.
+
+    Unlike `org_scope` this is not one transaction: the job can commit as it goes, so its
+    progress is visible while it runs. The scope is always cleared afterwards, so the next job
+    on this worker starts with none. Only for job runners (apps/core/jobs.py).
+    """
+    previous = get_scope()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT set_config('app.org_id', %s, false), set_config('app.user_id', '', false), "
+            "set_config('app.invite_hash', '', false)",
+            [str(org_id)],
+        )
+    try:
+        yield
+    finally:
+        if not connection.needs_rollback:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT set_config('app.org_id', %s, false), "
+                    "set_config('app.user_id', %s, false), "
+                    "set_config('app.invite_hash', %s, false)",
+                    list(previous),
+                )

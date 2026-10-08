@@ -9,7 +9,8 @@ from apps.core.policy import AuthenticatedOnly, Public
 HANDLED = ("get", "post", "put", "patch", "delete")
 
 # Values for URL parameters in sample calls.
-PARAMS = {"key": "SAMPLE"}
+# Placeholders for URL parameters; suites that need a real record pass their own.
+PARAMS = {"key": "SAMPLE", "job_id": "00000000-0000-0000-0000-000000000000"}
 
 
 def api_endpoints():
@@ -48,3 +49,91 @@ def methods_of(view_cls):
 def url_for(route: str, params: dict[str, str] | None = None) -> str:
     values = {**PARAMS, **(params or {})}
     return "/" + re.sub(r"<(?:\w+:)?(\w+)>", lambda m: values[m.group(1)], route)
+
+
+# --- Sign-in helpers (used by tests/security) -------------------------------------------------
+
+import hashlib  # noqa: E402
+import hmac  # noqa: E402
+import json  # noqa: E402
+import re as _re  # noqa: E402
+import struct  # noqa: E402
+import time  # noqa: E402
+from base64 import b32decode  # noqa: E402
+from urllib.parse import unquote  # noqa: E402
+
+from django.core import mail  # noqa: E402
+from django.test import Client  # noqa: E402
+
+AUTH_BASE = "/_allauth/browser/v1"
+GOOD_PASSWORD = "correct horse battery staple"
+
+
+def totp_code(secret: str, at: float | None = None) -> str:
+    """The 6-digit code an authenticator app would show now (RFC 6238, SHA-1, 30 seconds)."""
+    key = b32decode(secret.upper() + "=" * (-len(secret) % 8))
+    counter = int((time.time() if at is None else at) // 30)
+    digest = hmac.new(key, struct.pack(">Q", counter), hashlib.sha1).digest()
+    offset = digest[-1] & 0x0F
+    value = struct.unpack(">I", digest[offset : offset + 4])[0] & 0x7FFFFFFF
+    return f"{value % 10**6:06d}"
+
+
+def latest_link_key(pattern: str) -> str:
+    """The key in the newest email's link, e.g. pattern 'verify-email/' or 'reset-password/'."""
+    body = str(mail.outbox[-1].body)
+    match = _re.search(_re.escape(pattern) + r"(\S+)", body)
+    assert match, f"no {pattern} link in: {body[:200]}"
+    return unquote(match.group(1))
+
+
+class Browser:
+    """A browser talking to the sign-in API and the app API, with CSRF checks switched on."""
+
+    def __init__(self, **client_kwargs):
+        self.client = Client(enforce_csrf_checks=True, **client_kwargs)
+        self.client.get(f"{AUTH_BASE}/config")  # sets the CSRF cookie, as the app does on load
+
+    def _send(self, method: str, url: str, body=None, org: str | None = None):
+        headers = {"X-CSRFToken": self.client.cookies["csrftoken"].value}
+        if org:
+            headers["X-Org"] = org
+        kwargs: dict = {"headers": headers}
+        if body is not None:
+            kwargs.update(data=json.dumps(body), content_type="application/json")
+        return getattr(self.client, method)(url, **kwargs)
+
+    def auth(self, method: str, path: str, body=None):
+        return self._send(method, AUTH_BASE + path, body)
+
+    def api(self, method: str, path: str, body=None, org: str | None = None):
+        return self._send(method, path, body, org)
+
+    # Common steps
+    def sign_up(self, email: str, password: str = GOOD_PASSWORD, name: str = ""):
+        return self.auth(
+            "post", "/auth/signup", {"email": email, "password": password, "name": name}
+        )
+
+    def verify_email(self):
+        return self.auth("post", "/auth/email/verify", {"key": latest_link_key("verify-email/")})
+
+    def log_in(self, email: str, password: str = GOOD_PASSWORD):
+        return self.auth("post", "/auth/login", {"email": email, "password": password})
+
+    def is_signed_in(self) -> bool:
+        return self.auth("get", "/auth/session").status_code == 200
+
+    def enrol_totp(self) -> str:
+        """Set up an authenticator app and return its secret."""
+        secret = self.auth("get", "/account/authenticators/totp").json()["meta"]["secret"]
+        response = self.auth("post", "/account/authenticators/totp", {"code": totp_code(secret)})
+        assert response.status_code == 200, response.content
+        return secret
+
+    def sign_up_and_in(self, email: str, password: str = GOOD_PASSWORD, name: str = ""):
+        assert self.sign_up(email, password, name).status_code == 401  # verification pending
+        assert self.verify_email().status_code == 401  # verified, but not signed in yet
+        response = self.log_in(email, password)
+        assert response.status_code == 200, response.content
+        return response

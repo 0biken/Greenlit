@@ -3,6 +3,20 @@ info:
   title: Greenlit API
   version: 0.1.0
 paths:
+  /api/csrf/:
+    get:
+      operationId: csrf_retrieve
+      description: Set the CSRF cookie and return the token. The app sends it back
+        as `X-CSRFToken`.
+      tags:
+      - csrf
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Csrf'
+          description: ''
   /api/flags/:
     get:
       operationId: flags_retrieve
@@ -88,6 +102,81 @@ paths:
               schema:
                 $ref: '#/components/schemas/OrganisationCreated'
           description: ''
+  /api/jobs/:
+    get:
+      operationId: jobs_list
+      description: The organisation's newest jobs; `?state=dead` lists the ones waiting
+        for an admin.
+      parameters:
+      - in: query
+        name: state
+        schema:
+          type: string
+          enum:
+          - dead
+          - failed
+          - queued
+          - running
+          - succeeded
+      tags:
+      - jobs
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Job'
+          description: ''
+  /api/jobs/{job_id}/:
+    get:
+      operationId: jobs_retrieve
+      description: One job, for polling its progress.
+      parameters:
+      - in: path
+        name: job_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - jobs
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/jobs/{job_id}/rerun/:
+    post:
+      operationId: jobs_rerun_create
+      description: Run a failed or dead job again from its first attempt.
+      parameters:
+      - in: path
+        name: job_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - jobs
+      security:
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+        '409':
+          description: No response body
   /api/me/:
     get:
       operationId: me_retrieve
@@ -242,6 +331,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/Project'
           description: ''
+  /api/sessions/end-all/:
+    post:
+      operationId: sessions_end_all_create
+      description: 'Sign out everywhere: end every session of this user, this one
+        included (SEC §3).'
+      tags:
+      - sessions
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
 components:
   schemas:
     AcceptInvite:
@@ -252,6 +353,13 @@ components:
           maxLength: 200
       required:
       - token
+    Csrf:
+      type: object
+      properties:
+        csrfToken:
+          type: string
+      required:
+      - csrfToken
     CurrentOrganisation:
       type: object
       properties:
@@ -315,6 +423,42 @@ components:
       required:
       - email
       - role
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+        state:
+          type: string
+        progress: {}
+        error:
+          type: string
+        attempts:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - attempts
+      - created_at
+      - error
+      - finished_at
+      - id
+      - kind
+      - progress
+      - started_at
+      - state
     Me:
       type: object
       properties:
@@ -326,6 +470,8 @@ components:
           format: email
         name:
           type: string
+        mfa_enabled:
+          type: boolean
         memberships:
           type: array
           items:
@@ -334,6 +480,7 @@ components:
       - email
       - id
       - memberships
+      - mfa_enabled
       - name
     Member:
       type: object
@@ -365,7 +512,10 @@ components:
           type: string
         status:
           type: string
+        needs_mfa:
+          type: boolean
       required:
+      - needs_mfa
       - organisation
       - role
       - status

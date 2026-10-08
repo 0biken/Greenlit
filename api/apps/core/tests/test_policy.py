@@ -31,6 +31,7 @@ PRD_TABLE = {
     Action.APPROVE_WONTFIX: "YYY...",
     Action.SIGN_OFF: "YYY...",
     Action.VIEW: "YYYYYY",
+    Action.MANAGE_JOBS: "YY....",  # "Re-run failed background jobs"
 }
 
 

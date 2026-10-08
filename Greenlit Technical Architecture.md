@@ -43,7 +43,7 @@ The proposed stack is a React and TypeScript front end, a Django API in Python, 
 | UI components | Accessible headless primitives (for example Radix UI) styled with the brand guide's tokens | Keyboard and screen-reader support out of the box; looks like Greenlit, not a template | A full component kit, at the cost of a generic look |
 | API | Django with Django REST Framework | Mature auth, ORM, migrations, admin; large talent pool in Nigeria | Node.js with NestJS, to share TypeScript across front and back |
 | Database | PostgreSQL 16 or later, managed | Row-level security, JSON fields, full-text search, strong constraints | None; this is fixed by the data model spec |
-| Job queue | Celery with Redis | Standard with Django; retries and schedules built in | Dramatiq, or the hosting platform's own queue |
+| Job queue | Celery with Redis | Standard with Django; retries and schedules built in. The same Redis also holds sign-in and API rate-limit counters, which contain no tenant data (decision record 011) | Dramatiq, or the hosting platform's own queue |
 | File storage | S3-compatible object storage, private buckets | Signed links, versioning, cheap | Any S3-compatible provider |
 | Sign-in | django-allauth (email, Google, authenticator-app 2FA) | Covers the security design's sign-in rules without custom code | A hosted auth service |
 | Document parsing | Python libraries for PDF and DOCX text and images (for example pdfplumber, python-docx), with OCR only as fallback | Keeps page numbers and positions for provenance | A hosted document-parsing API |
@@ -201,7 +201,10 @@ Each significant choice gets a one-page decision record in `docs/decisions/`: th
 | 007 | Hosting platform and region (after the latency test) | Open |
 | 008 | AI provider (after the test set and terms review) | Open |
 | 009 | Email provider | Open |
-| 010 | Polling or server-sent events for job progress | Open |
+| 010 | Polling or server-sent events for job progress | Open (start with polling) |
+| 011 | Redis also used as a cache for rate-limit counters | Proposed |
+| 012 | allauth headless API for sign-in from the single-page app | Proposed |
+| 013 | Provisional design tokens until brand guidelines v2.0 are in the repo | Proposed |
 
 **Open questions**
 

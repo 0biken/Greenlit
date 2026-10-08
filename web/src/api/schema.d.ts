@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/csrf/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Set the CSRF cookie and return the token. The app sends it back as `X-CSRFToken`. */
+        get: operations["csrf_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/flags/": {
         parameters: {
             query?: never;
@@ -66,6 +83,57 @@ export interface paths {
         put?: never;
         /** @description Accept an invitation from the emailed link. Needs a signed-in user with the invited email. */
         post: operations["invites_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The organisation's newest jobs; `?state=dead` lists the ones waiting for an admin. */
+        get: operations["jobs_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/{job_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description One job, for polling its progress. */
+        get: operations["jobs_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/{job_id}/rerun/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Run a failed or dead job again from its first attempt. */
+        post: operations["jobs_rerun_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -175,12 +243,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sessions/end-all/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Sign out everywhere: end every session of this user, this one included (SEC §3). */
+        post: operations["sessions_end_all_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         AcceptInvite: {
             token: string;
+        };
+        Csrf: {
+            csrfToken: string;
         };
         CurrentOrganisation: {
             /** Format: uuid */
@@ -209,12 +297,28 @@ export interface components {
             email: string;
             role: components["schemas"]["RoleEnum"];
         };
+        Job: {
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            state: string;
+            progress: unknown;
+            error: string;
+            attempts: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            started_at: string | null;
+            /** Format: date-time */
+            finished_at: string | null;
+        };
         Me: {
             /** Format: uuid */
             id: string;
             /** Format: email */
             email: string;
             name: string;
+            mfa_enabled: boolean;
             memberships: components["schemas"]["MembershipSummary"][];
         };
         Member: {
@@ -230,6 +334,7 @@ export interface components {
             organisation: components["schemas"]["OrganisationSummary"];
             role: string;
             status: string;
+            needs_mfa: boolean;
         };
         OrganisationCreate: {
             name: string;
@@ -279,6 +384,25 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    csrf_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Csrf"];
+                };
+            };
+        };
+    };
     flags_retrieve: {
         parameters: {
             query?: never;
@@ -364,6 +488,76 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OrganisationCreated"];
                 };
+            };
+        };
+    };
+    jobs_list: {
+        parameters: {
+            query?: {
+                state?: "dead" | "failed" | "queued" | "running" | "succeeded";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"][];
+                };
+            };
+        };
+    };
+    jobs_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    jobs_rerun_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+            /** @description No response body */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -527,6 +721,24 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Project"];
                 };
+            };
+        };
+    };
+    sessions_end_all_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

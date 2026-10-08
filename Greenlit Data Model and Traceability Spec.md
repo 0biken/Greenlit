@@ -39,7 +39,7 @@ Each case result also points at the exact case revision it tested, which is how 
 
 ## Entities and fields
 
-There are 26 tables: 24 listed here in seven groups, the requirement-to-case link in section 5 and the ID counter in section 4. Test cases are split into a stable identity (`test_case`) and immutable content snapshots (`case_revision`), which lets versioning and run history work without copying whole plans.
+There are 30 tables: 28 listed here in seven groups, the requirement-to-case link in section 5 and the ID counter in section 4. Test cases are split into a stable identity (`test_case`) and immutable content snapshots (`case_revision`), which lets versioning and run history work without copying whole plans.
 
 **Account**
 
@@ -48,8 +48,9 @@ There are 26 tables: 24 listed here in seven groups, the requirement-to-case lin
 | organisation | name, slug, plan\_tier, ai\_allowance | Root of every tenant; `org_id` on its own row equals `id` |
 | user | email, name, auth\_provider | Global; not scoped to one organisation |
 | membership | user\_id, role (enum: owner, admin, qa\_lead, qa\_engineer, developer, viewer), status | One row per user per organisation |
-| project | name, client\_name, key (text, 2 to 6 letters) | `key` is unique in the organisation |
+| project | name, client\_name, key (text, 2 to 6 letters), settings (json) | `key` is unique in the organisation; `settings` holds the per-project thresholds in section 9 and is validated against fixed defaults |
 | project\_member | project\_id, user\_id | Who sees a project; owners and admins see all |
+| invitation | email, role, token\_hash, expires\_at, accepted\_at, revoked\_at, invited\_by | Only a hash of the emailed token is stored; a new invitation to the same address revokes the earlier one; the holder of a token can read that one row before joining (section 8) |
 
 **Requirements**
 
@@ -99,6 +100,9 @@ There are 26 tables: 24 listed here in seven groups, the requirement-to-case lin
 | snooze | user\_id, target\_type, target\_id, until, reason | Hides one Inbox item for one user until a date |
 | audit\_event | actor\_id, action, target\_type, target\_id, before (json), after (json), at | Append-only (section 10) |
 | external\_ref | target\_type, target\_id, provider (enum: jira, github, figma), external\_key, external\_url, last\_synced\_at | Unused in v1; ready for phase 2 sync |
+| stored\_file | project\_id, kind (enum: prd, screenshot, qa\_report, evidence), original\_name, storage\_key, declared\_mime, detected\_mime, size\_bytes, sha256, state (enum: pending, scanning, available, rejected, infected), uploaded\_by | One row per uploaded file; the key is `{org_id}/{project_id}/{uuid}`; `source_document.file_ref` and `evidence.file_ref` point here; a file is not served until `available` |
+| job | kind, args (json), state (enum: queued, running, succeeded, failed, dead), progress (json), error, attempts, created\_by, started\_at, finished\_at | Background work for one organisation; `args` hold IDs only, never document text; `error` holds an error class and IDs, never content |
+| org\_registry | org\_id | Not tenant data: only organisation IDs, so schedulers can run a job once per organisation without a scope. Kept in step with `organisation` by a trigger |
 
 Objects AI can draft (requirement, case\_revision, defect) carry `origin` (enum: human, ai) and `review_state` (enum: draft, accepted, rejected). Only accepted rows count anywhere in coverage, readiness or reports.
 
