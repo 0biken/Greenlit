@@ -25,7 +25,7 @@ from apps.core.models import (
 )
 from apps.core.policy import can
 from apps.core.tenancy import org_scope
-from tests.support import HANDLED, api_endpoints, declared, url_for
+from tests.support import HANDLED, api_endpoints, declared, stored_file, url_for
 
 pytestmark = pytest.mark.django_db
 
@@ -48,6 +48,12 @@ SAMPLES = {
     },
     ("api/projects/", "post"): lambda: {"name": "Sample", "key": _letters(next(_counter))},
     ("api/jobs/<uuid:job_id>/rerun/", "post"): lambda: {},
+    ("api/projects/<str:key>/files/", "post"): lambda: {
+        "kind": "evidence",
+        "name": "shot.png",
+        "size": 100,
+    },
+    ("api/files/<uuid:file_id>/complete/", "post"): lambda: {},
 }
 
 
@@ -98,7 +104,9 @@ def _org_with_a_member_of_each_role():
             users[role] = user
         # A job that gave up, so re-running it is a valid request.
         job = Job.objects.create(org_id=org.id, kind="sample", state=JobState.DEAD)
-    return org, users, {"job_id": str(job.id)}
+        # An available file, so downloading it and completing it (a no-op) are valid requests.
+        upload = stored_file(org, project, "evidence.png")
+    return org, users, {"job_id": str(job.id), "file_id": str(upload.id)}
 
 
 def _as_app_role():

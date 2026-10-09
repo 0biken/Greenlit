@@ -26,7 +26,7 @@ from apps.core.models import (
 )
 from apps.core.numbering import next_number
 from apps.core.tenancy import org_scope, set_scope
-from tests.support import api_endpoints, declared, methods_of, url_for
+from tests.support import api_endpoints, declared, methods_of, stored_file, url_for
 
 pytestmark = pytest.mark.django_db
 
@@ -62,7 +62,9 @@ def world():
             next_number(shared.pk, org.pk, CounterKind.DEFECT)
             assert ProjectMember.objects.filter(user=engineer).exists()
             job = Job.objects.create(org_id=org.id, kind="sample", state=JobState.DEAD)
+            upload = stored_file(org, shared, f"{display} evidence.png")
         setattr(w, tag, org)
+        setattr(w, f"{tag}_file", upload)
         setattr(w, f"{tag}_job", job)
         setattr(w, f"{tag}_owner", owner)
         setattr(w, f"{tag}_engineer", engineer)
@@ -183,7 +185,14 @@ def test_no_alpha_response_contains_any_of_bravos_data(world):
             if "get" not in methods_of(view_cls):
                 continue
             response = client.get(
-                url_for(route, {"key": "SHARED", "job_id": str(world.alpha_job.id)}),
+                url_for(
+                    route,
+                    {
+                        "key": "SHARED",
+                        "job_id": str(world.alpha_job.id),
+                        "file_id": str(world.alpha_file.id),
+                    },
+                ),
                 headers={"X-Org": "alpha-iso"},
             )
             text = response.content.decode(errors="replace")
@@ -201,7 +210,14 @@ def test_bravos_identifiers_are_not_found_under_alpha(world):
             if "<" not in route or "get" not in methods_of(view_cls):
                 continue
             response = client.get(
-                url_for(route, {"key": "SECRTB", "job_id": str(world.bravo_job.id)}),
+                url_for(
+                    route,
+                    {
+                        "key": "SECRTB",
+                        "job_id": str(world.bravo_job.id),
+                        "file_id": str(world.bravo_file.id),
+                    },
+                ),
                 headers={"X-Org": "alpha-iso"},
             )
             assert response.status_code == 404, f"GET {route} with Bravo's key as {user.email}"

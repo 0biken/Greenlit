@@ -10,7 +10,11 @@ HANDLED = ("get", "post", "put", "patch", "delete")
 
 # Values for URL parameters in sample calls.
 # Placeholders for URL parameters; suites that need a real record pass their own.
-PARAMS = {"key": "SAMPLE", "job_id": "00000000-0000-0000-0000-000000000000"}
+PARAMS = {
+    "key": "SAMPLE",
+    "job_id": "00000000-0000-0000-0000-000000000000",
+    "file_id": "00000000-0000-0000-0000-000000000000",
+}
 
 
 def api_endpoints():
@@ -137,3 +141,32 @@ class Browser:
         response = self.log_in(email, password)
         assert response.status_code == 200, response.content
         return response
+
+
+PNG_BYTES = bytes.fromhex("89504e470d0a1a0a") + b"0" * 32
+
+
+def stored_file(org, project, name: str, data: bytes = PNG_BYTES):
+    """An uploaded, scanned, available file with its bytes in storage. Call in the org's scope."""
+    import hashlib as _hashlib
+    import uuid as _uuid
+
+    from apps.files.models import FileState, StoredFile
+    from apps.files.storage import get_storage
+
+    file_id = _uuid.uuid4()
+    key = f"{org.id}/{project.id}/{file_id}"
+    get_storage().put_bytes(key, data)
+    return StoredFile.objects.create(
+        id=file_id,
+        org_id=org.id,
+        project=project,
+        kind="evidence",
+        original_name=name,
+        storage_key=key,
+        declared_mime="image/png",
+        detected_type="png",
+        size_bytes=len(data),
+        sha256=_hashlib.sha256(data).hexdigest(),
+        state=FileState.AVAILABLE,
+    )

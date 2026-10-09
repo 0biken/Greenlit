@@ -120,7 +120,7 @@ Not engineering work, but the build gate depends on it.
 
 **Files (SEC §8, §6; ARCH §4 rule: only `files/` touches storage)**
 
-- [ ] **M1-14** File service:
+- [x] **M1-14** (apps/files, docs/files.md: content identified by bytes per PRD §9 kind, HTML and SVG refused whatever they are called; size limits, 10 GB org quota; keys `{org}/{project}/{uuid}`; scan job hashes and scans before release, rejected and infected bytes deleted; 15-minute signed links, downloads as sandboxed attachments; S3 (SigV4, size-limited presigned POST) or local storage; ClamAV or stub scanner, production refuses stub and local. 50 tests; 10 deliberate breaks caught after fixing one test that passed for the wrong reason. Found on the way: the scan deleted files while still open, which Windows refuses, leaving rejected files stuck in scanning; and S3 links defaulted to SigV2. NOT proven: S3/MinIO and ClamAV themselves, which need Docker or staging) File service:
   - Signed upload URL scoped to `/{org_id}/{project_id}/`; upload-complete callback.
   - Allow-list checked by content per upload kind (PRD §9 "File types"); HTML and SVG refused.
   - Size limits: 20 MB for PRDs, 200 MB per evidence file; 10 GB per organisation on the starter plan.

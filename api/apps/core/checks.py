@@ -16,3 +16,28 @@ def field_encryption_keys_set(app_configs, **kwargs):
             )
         ]
     return []
+
+
+@register()
+def production_file_handling(app_configs, **kwargs):
+    """Outside development, uploads must be scanned by ClamAV and kept in object storage."""
+    if settings.DEBUG:
+        return []
+    errors = []
+    if settings.MALWARE_SCANNER != "clamav":
+        errors.append(
+            Error(
+                "MALWARE_SCANNER must be 'clamav' outside development.",
+                hint="The stub scanner only recognises the EICAR test file.",
+                id="greenlit.E002",
+            )
+        )
+    if settings.FILE_STORAGE_BACKEND != "s3":
+        errors.append(
+            Error(
+                "FILE_STORAGE_BACKEND must be 's3' outside development.",
+                hint="Local storage keeps files on the web server's disk.",
+                id="greenlit.E003",
+            )
+        )
+    return errors

@@ -264,3 +264,21 @@ SOCIALACCOUNT_AUTO_SIGNUP = True
 # address: that would let anyone who controls a matching Google address take the account over.
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = False
 SOCIALACCOUNT_LOGIN_ON_GET = False
+
+# --- Files (M1-14, apps/files) ------------------------------------------------------------------
+# "s3" in staging and production (a private bucket); "local" stores files in a folder for
+# development. Links to send or fetch a file are valid for 15 minutes (SEC §6).
+FILE_STORAGE_BACKEND = env("FILE_STORAGE_BACKEND", default="s3")
+FILE_STORAGE_LOCAL_ROOT = BASE_DIR / "var" / "files"
+FILE_STORAGE_BUCKET = env("FILE_STORAGE_BUCKET", default="greenlit-files")
+FILE_STORAGE_ENDPOINT = env("FILE_STORAGE_ENDPOINT", default="")
+FILE_STORAGE_REGION = env("FILE_STORAGE_REGION", default="")
+FILE_STORAGE_ACCESS_KEY = env("FILE_STORAGE_ACCESS_KEY", default="")
+FILE_STORAGE_SECRET_KEY = env("FILE_STORAGE_SECRET_KEY", default="")
+FILE_LINK_TTL_SECONDS = 15 * 60
+ORG_STORAGE_QUOTA_BYTES = env.int("ORG_STORAGE_QUOTA_BYTES", default=10 * 1024**3)  # starter plan
+
+# "clamav" outside development; "stub" only flags the EICAR test file (apps/files/scanner.py).
+MALWARE_SCANNER = env("MALWARE_SCANNER", default="clamav")
+CLAMAV_HOST = env("CLAMAV_HOST", default="localhost")
+CLAMAV_PORT = env.int("CLAMAV_PORT", default=3310)

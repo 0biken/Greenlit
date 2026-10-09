@@ -6,11 +6,14 @@ ast_serialize==0.12.1
 attrs==26.1.0
 billiard==4.3.0
 boolean.py==5.0
+boto3==1.43.110
+botocore==1.43.110
 CacheControl==0.14.4
 celery==5.6.3
 certifi==2026.7.22
 cffi==2.1.1
 charset-normalizer==3.5.2
+clamd==1.0.2
 click==8.5.0
 click-didyoumean==0.3.1
 click-plugins==1.1.1.2
@@ -32,6 +35,7 @@ filelock==4.0.10
 idna==3.20
 inflection==0.5.1
 iniconfig==2.3.0
+jmespath==1.1.0
 jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
 kombu==5.6.2
@@ -68,6 +72,7 @@ requests==2.34.2
 rich==15.0.0
 rpds-py==2026.6.3
 ruff==0.16.10
+s3transfer==0.19.2
 sentry-sdk==2.71.0
 six==1.17.0
 sortedcontainers==2.4.0

@@ -17,6 +17,73 @@ paths:
               schema:
                 $ref: '#/components/schemas/Csrf'
           description: ''
+  /api/files/{file_id}/:
+    get:
+      operationId: files_retrieve
+      parameters:
+      - in: path
+        name: file_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - files
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+          description: ''
+  /api/files/{file_id}/complete/:
+    post:
+      operationId: files_complete_create
+      description: 'The bytes are sent: identify, hash and scan them in the background.'
+      parameters:
+      - in: path
+        name: file_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - files
+      security:
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+          description: ''
+  /api/files/{file_id}/download/:
+    get:
+      operationId: files_download_retrieve
+      description: A link valid for 15 minutes. Refused until the file has been scanned.
+      parameters:
+      - in: path
+        name: file_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - files
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Download'
+          description: ''
+        '409':
+          description: No response body
   /api/flags/:
     get:
       operationId: flags_retrieve
@@ -331,6 +398,40 @@ paths:
               schema:
                 $ref: '#/components/schemas/Project'
           description: ''
+  /api/projects/{key}/files/:
+    post:
+      operationId: projects_files_create
+      description: 'Start an upload: returns a link valid for 15 minutes to send the
+        bytes to.'
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UploadRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadStarted'
+          description: ''
   /api/sessions/end-all/:
     post:
       operationId: sessions_end_all_create
@@ -377,6 +478,55 @@ components:
       - name
       - role
       - slug
+    Download:
+      type: object
+      properties:
+        url:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+      required:
+      - expires_at
+      - url
+    File:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+        name:
+          type: string
+        size_bytes:
+          type: integer
+        state:
+          type: string
+        detected_type:
+          type: string
+        sha256:
+          type: string
+        rejection_reason:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        available_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - available_at
+      - created_at
+      - detected_type
+      - id
+      - kind
+      - name
+      - rejection_reason
+      - sha256
+      - size_bytes
+      - state
     Flags:
       type: object
       properties:
@@ -459,6 +609,18 @@ components:
       - progress
       - started_at
       - state
+    KindEnum:
+      enum:
+      - evidence
+      - prd
+      - qa_report
+      - screenshot
+      type: string
+      description: |-
+        * `evidence` - evidence
+        * `prd` - prd
+        * `qa_report` - qa_report
+        * `screenshot` - screenshot
     Me:
       type: object
       properties:
@@ -611,6 +773,55 @@ components:
         * `qa_engineer` - Qa Engineer
         * `developer` - Developer
         * `viewer` - Viewer
+    UploadRequest:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+        name:
+          type: string
+          maxLength: 255
+        size:
+          type: integer
+          minimum: 0
+      required:
+      - kind
+      - name
+      - size
+    UploadStarted:
+      type: object
+      properties:
+        file:
+          $ref: '#/components/schemas/File'
+        upload:
+          $ref: '#/components/schemas/UploadTarget'
+      required:
+      - file
+      - upload
+    UploadTarget:
+      type: object
+      properties:
+        method:
+          type: string
+        url:
+          type: string
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        expires_at:
+          type: string
+          format: date-time
+      required:
+      - expires_at
+      - fields
+      - headers
+      - method
+      - url
   securitySchemes:
     cookieAuth:
       type: apiKey

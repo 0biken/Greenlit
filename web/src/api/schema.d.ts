@@ -21,6 +21,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/files/{file_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["files_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/files/{file_id}/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The bytes are sent: identify, hash and scan them in the background. */
+        post: operations["files_complete_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/files/{file_id}/download/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A link valid for 15 minutes. Refused until the file has been scanned. */
+        get: operations["files_download_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/flags/": {
         parameters: {
             query?: never;
@@ -243,6 +293,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{key}/files/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Start an upload: returns a link valid for 15 minutes to send the bytes to. */
+        post: operations["projects_files_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/sessions/end-all/": {
         parameters: {
             query?: never;
@@ -276,6 +343,26 @@ export interface components {
             slug: string;
             name: string;
             role: string;
+        };
+        Download: {
+            url: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        File: {
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            name: string;
+            size_bytes: number;
+            state: string;
+            detected_type: string;
+            sha256: string;
+            rejection_reason: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            available_at: string | null;
         };
         Flags: {
             enabled: string[];
@@ -312,6 +399,14 @@ export interface components {
             /** Format: date-time */
             finished_at: string | null;
         };
+        /**
+         * @description * `evidence` - evidence
+         *     * `prd` - prd
+         *     * `qa_report` - qa_report
+         *     * `screenshot` - screenshot
+         * @enum {string}
+         */
+        KindEnum: "evidence" | "prd" | "qa_report" | "screenshot";
         Me: {
             /** Format: uuid */
             id: string;
@@ -375,6 +470,27 @@ export interface components {
          * @enum {string}
          */
         RoleEnum: "owner" | "admin" | "qa_lead" | "qa_engineer" | "developer" | "viewer";
+        UploadRequest: {
+            kind: components["schemas"]["KindEnum"];
+            name: string;
+            size: number;
+        };
+        UploadStarted: {
+            file: components["schemas"]["File"];
+            upload: components["schemas"]["UploadTarget"];
+        };
+        UploadTarget: {
+            method: string;
+            url: string;
+            fields: {
+                [key: string]: string;
+            };
+            headers: {
+                [key: string]: string;
+            };
+            /** Format: date-time */
+            expires_at: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -400,6 +516,76 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Csrf"];
                 };
+            };
+        };
+    };
+    files_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                file_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["File"];
+                };
+            };
+        };
+    };
+    files_complete_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                file_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["File"];
+                };
+            };
+        };
+    };
+    files_download_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                file_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Download"];
+                };
+            };
+            /** @description No response body */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -720,6 +906,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Project"];
+                };
+            };
+        };
+    };
+    projects_files_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UploadRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["UploadRequest"];
+                "multipart/form-data": components["schemas"]["UploadRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadStarted"];
                 };
             };
         };

@@ -11,6 +11,7 @@ from apps.core.views import (
     health,
     me,
 )
+from apps.files import views as file_views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -33,5 +34,14 @@ urlpatterns = [
     path("api/jobs/", views_jobs.job_list, name="jobs"),
     path("api/jobs/<uuid:job_id>/", views_jobs.job_detail, name="job-detail"),
     path("api/jobs/<uuid:job_id>/rerun/", views_jobs.job_rerun, name="job-rerun"),
+    path("api/projects/<str:key>/files/", file_views.start_upload, name="file-upload"),
+    path("api/files/<uuid:file_id>/", file_views.file_detail, name="file-detail"),
+    path("api/files/<uuid:file_id>/complete/", file_views.complete_upload, name="file-complete"),
+    path("api/files/<uuid:file_id>/download/", file_views.download, name="file-download"),
+    # Development stand-ins for the storage bucket; answer 404 unless storage is "local".
+    path("files/local/upload/<str:token>/", file_views.local_upload, name="file-local-upload"),
+    path(
+        "files/local/download/<str:token>/", file_views.local_download, name="file-local-download"
+    ),
     path("api/schema/", PublicSchemaView.as_view(), name="schema"),
 ]
