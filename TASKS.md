@@ -62,7 +62,7 @@ Not engineering work, but the build gate depends on it.
 - [ ] **P0-01** Interview QA teams; confirm the problems in PRD §2 and answer the PRD §11 open questions (retest window, who retests at agencies, Jira needs, pricing).
 - [ ] **P0-02** Build the AI test set: 10 PRDs with expert requirement lists and test plans, 5 screenshot sets, 5 old QA reports, with permission or anonymised (AI §7).
 - [ ] **P0-03** Clickable mock-ups of the QA Inbox, draft review and release sign-off; test with 5 QA engineers and leads (UX §11).
-- [ ] **P0-04** Get the brand guidelines v2.0 file into the repo (colour tokens, type, status marks, voice). *Blocks M1-18 styling.*
+- [x] **P0-04** (Greenlit_Brand_Guidelines_2.html and Greenlit_Logo_Pack/ in the repo; tokens copied into web/src/design/tokens.css) Get the brand guidelines v2.0 file into the repo (colour tokens, type, status marks, voice). *Blocks M1-18 styling.*
 - [ ] **P0-05** Gate: other teams confirm the problem. Re-plan the weeks below if needed.
 
 ---
@@ -136,9 +136,9 @@ Not engineering work, but the build gate depends on it.
 
 - [x] **M1-16** (CSP via Django's built-in middleware, nosniff, frame denial, Permissions-Policy; CSRF token endpoint `/api/csrf/` and a test that every non-GET endpoint refuses a request without it; throttles per IP, user and organisation on every API view, `upload` and `ai_job` scopes ready; Redis cache for counters, in-memory locally; see docs/security-headers.md. Proven able to fail by breaking each protection. The single-page app's own CSP is set by its host, still open with D-007) Security headers (HSTS, strict CSP, nosniff, frame-ancestors none), CSRF tokens on state-changing requests, rate limits per user, organisation and IP on sign-in, uploads, AI jobs and the API (SEC §8).
 - [x] **M1-17** (apps/core/jobs.py, docs/jobs.md: `job_handler`/`enqueue`, runs in its organisation's scope, retries 10 s doubling to 10 min, then `dead`; errors keep only the class name unless the handler raises `JobFailure` with a message written for people; a job delivered twice runs once; a running job silent for 30 min is taken over; progress commits as it goes and is readable from another connection mid-run; `for_each_org` fans out from `org_registry`; `GET /api/jobs/`, `GET /api/jobs/{id}/`, `POST /api/jobs/{id}/rerun/` (owners and admins). 20 tests; 9 deliberate breaks caught, one of them only after fixing a test that was checking itself. A real Redis-backed worker and beat schedule have not run, since there is no Redis here) Job framework: base task that requires one `org_id` and sets the scope before touching data; safe to run twice; retries with growing delays; failed jobs land in an admin list that can re-run them; progress written to the `job` table for the browser (G-04, D-010, ARCH §6).
-- [ ] **M1-18** Front-end shell: sign-in screens; organisation switcher; top bar Inbox, Projects, Settings; routes by display ID; brand tokens on `:root`; Radix primitives; status chip component (mark plus word, never colour alone); visible focus ring; `?` shortcut overlay (UX §1, §10). *Styling needs P0-04.*
+- [x] **M1-18** Front-end shell: sign-in screens; organisation switcher; top bar Inbox, Projects, Settings; routes by display ID; brand tokens on `:root`; Radix primitives; status chip component (mark plus word, never colour alone); visible focus ring; `?` shortcut overlay (UX §1, §10). *Styling needs P0-04.*
 - [~] **M1-19** (API done: change role, remove member, list and revoke invitations, edit project and its settings, add and remove project members; owners only for owner changes, never zero owners, everything audited, a stranger's or other tenant's ID is 404; project settings validated with spec defaults in apps/core/project_settings.py (G-08 closed). 29 tests plus permission-table and isolation coverage; 9 deliberate breaks caught. Screens come with M1-18) Settings: members (invite, change role, remove, all audited), projects, project settings (G-08).
-- [ ] **M1-20** Seed command: two organisations with projects, members of every role, and sample records for each module as it lands (used locally, on staging and by M1-15).
+- [x] **M1-20** Seed command: two organisations with projects, members of every role, and sample records for each module as it lands (used locally, on staging and by M1-15).
 
 ## M2. Source documents, requirements and the AI core (weeks 7 to 8)
 
@@ -214,7 +214,7 @@ Not engineering work, but the build gate depends on it.
 - [ ] **M6-05** `reminders` job every 15 minutes per organisation: Needs retest past 48 hours goes to the top of the owner's Inbox; past 96 hours it also appears for the QA lead; each level notified once (FR-INB-02; G-01).
 - [ ] **M6-06** Critical items (closed with failed retest) skip the digest and notify the owner and QA lead within one job cycle (FR-INB-03; ARCH §5).
 - [ ] **M6-07** `digest` job at 07:00 in each user's time zone: one email per user with open items, none for users with nothing open; titles and links only, never document contents (FR-INB-03; SEC §10; G-03; D-009).
-- [ ] **M6-08** Inbox screen, desktop and phone (sidebar becomes filter chips); keyboard navigation; empty, loading and error states from UX §9; status chips read as "Status: Needs retest, 4 days" (UX §6, §10).
+- [ ] **M6-08** (screen built in web/src/features/inbox against the mock API in web/src/mocks; switch to the real endpoint when M6-03 lands) Inbox screen, desktop and phone (sidebar becomes filter chips); keyboard navigation; empty, loading and error states from UX §9; status chips read as "Status: Needs retest, 4 days" (UX §6, §10).
 - [ ] **M6-09** Metrics instrumentation: reminder action rate within 72 hours, retest lag, escaped closures (PRD §3).
 
 ## M7. Screenshots and report import (week 11)
@@ -240,7 +240,7 @@ Not engineering work, but the build gate depends on it.
   - (FR-RPT-03; DATA §3; UX §8)
 - [ ] **M8-07** PDF export of the signed version (FR-RPT-04).
 - [ ] **M8-08** Read-only share link showing only the signed version; revocable; expires after 30 days by default; downloads through it audited (FR-RPT-04; SEC §4; G-02).
-- [ ] **M8-09** Release screen: blockers on the left, report and sign-off on the right; after sign-off, who signed, when and readiness at that moment (UX §8).
+- [ ] **M8-09** (screen built in web/src/features/releases against the mock API in web/src/mocks; PDF and share link are stubs until M8-07/M8-08) Release screen: blockers on the left, report and sign-off on the right; after sign-off, who signed, when and readiness at that moment (UX §8).
 
 ## M9. Cross-cutting work (runs alongside, finished by week 14)
 

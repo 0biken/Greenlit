@@ -1,0 +1,109 @@
+/* ---------- dialog forms, choices and evidence drop zone ---------- */
+.dialog-form {
+  display: grid;
+  gap: 20px;
+  margin-top: 22px;
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: var(--hairline);
+}
+fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.segmented legend {
+  margin-bottom: 8px;
+}
+.segment {
+  position: relative;
+}
+.segment input,
+.outcome input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.segment span {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 14px;
+  border: var(--hairline);
+  border-radius: var(--radius);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.segment input:checked + span {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+.segment input:focus-visible + span,
+.outcome:has(input:focus-visible) {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+.outcomes {
+  display: grid;
+  gap: 8px;
+}
+.outcomes legend {
+  margin-bottom: 8px;
+}
+.outcome {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 14px;
+  border: var(--hairline);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+.outcome > span {
+  display: grid;
+  gap: 2px;
+  font-size: 14px;
+}
+.outcome svg {
+  margin-top: 3px;
+}
+.outcome:has(input:checked) {
+  border-color: var(--ink);
+  background: var(--sheet);
+}
+.dropzone {
+  position: relative;
+  display: block;
+  padding: 18px;
+  border: 1px dashed var(--graphite);
+  border-radius: var(--radius);
+  background: var(--sheet);
+  font-size: 14px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.dropzone input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.dropzone:has(input:focus-visible) {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+

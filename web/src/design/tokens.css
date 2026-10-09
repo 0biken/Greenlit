@@ -1,0 +1,68 @@
+/* Greenlit brand tokens, copied from the brand guidelines v2.0 (sections 05, 06, 07, 09).
+   Change them there first. Green is for verified or ready to go, nothing else. */
+:root {
+  /* Neutrals: ink and paper */
+  --ink: #161812;
+  --ink-2: #4a4c40;
+  --ink-3: #686a5e;
+  --paper: #f2efe4;
+  --paper-2: #e8e4d3;
+  --sheet: #faf8f0;
+  --rule: #cbc8b5;
+  --rule-soft: #dddaca;
+
+  /* Status colours. Text uses the -deep variants; --tick is for marks and fills only (2.9:1). */
+  --tick: #22a049;
+  --tick-deep: #15692c;
+  --tick-lift: #52d274; /* the tick on ink */
+  --stop: #c93a22;
+  --stop-deep: #a82b16;
+  --hold: #d9a21b;
+  --hold-deep: #8a5f00;
+  --pencil: #3556a8;
+  --graphite: #8c8f84;
+  --graphite-deep: #565950;
+
+  /* Chip tints (guide section 09) */
+  --pass-bg: #e1edd6;
+  --pass-line: #b7d2a6;
+  --fail-bg: #f4ddd5;
+  --fail-line: #e3b4a6;
+  --hold-bg: #f5e8c6;
+  --hold-line: #e2ca8a;
+  --open-bg: #e6e3d5;
+  --open-line: #cdcab9;
+  --draft-bg: #dfe4f1;
+  --draft-line: #b8c3e0;
+
+  /* Type */
+  --serif: 'Newsreader Variable', 'Newsreader', Georgia, 'Times New Roman', serif;
+  --sans: 'IBM Plex Sans', Arial, 'Helvetica Neue', sans-serif;
+  --mono: 'IBM Plex Mono', Consolas, ui-monospace, monospace;
+
+  --text-overline: 11px;
+  --text-label: 13px;
+  --text-body: 15px;
+  --text-sub: 20px; /* serif from here up only */
+  --text-heading: 32px;
+  --text-display: 64px;
+
+  /* Shape and layout */
+  --radius: 3px;
+  --hairline: 1px solid var(--rule);
+  --margin-col: 88px; /* the ledger margin that holds marks and numbers */
+  --gutter: 24px;
+  --page-max: 1240px;
+  --topbar-h: 56px;
+
+  /* Motion: short, ease-out, never on keyboard actions */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --dur-press: 140ms;
+  --dur-pop: 160ms;
+  --dur-pop-exit: 120ms;
+  --dur-dialog: 220ms;
+  --dur-collapse: 200ms;
+
+  --focus-ring: 2px solid var(--pencil);
+}

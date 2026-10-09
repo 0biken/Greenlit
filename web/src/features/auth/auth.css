@@ -1,0 +1,127 @@
+.auth {
+  display: grid;
+  grid-template-columns: minmax(280px, 5fr) 7fr;
+  min-height: 100dvh;
+}
+.auth-side {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 48px;
+  background: var(--ink);
+  color: var(--paper);
+}
+.auth-motto {
+  font-family: var(--serif);
+  font-size: clamp(44px, 5.6vw, 72px);
+  font-weight: 500;
+  line-height: 0.98;
+  letter-spacing: -0.028em;
+}
+.auth-motto em {
+  font-weight: 400;
+}
+.auth-promise {
+  max-width: 340px;
+  margin-top: 24px;
+  color: #c9c7ba;
+  font-size: 14px;
+}
+.auth-main {
+  width: 100%;
+  max-width: 440px;
+  padding: 48px 32px;
+  margin: 0 auto;
+  align-self: center;
+}
+.auth-logo {
+  display: inline-block;
+  margin-bottom: 48px;
+}
+.auth-title {
+  font-size: var(--text-heading);
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+}
+.auth-lead {
+  margin-top: 10px;
+  color: var(--ink-2);
+}
+.auth-form {
+  display: grid;
+  gap: 18px;
+  margin-top: 28px;
+}
+.auth-form .btn {
+  width: 100%;
+  height: 44px;
+  margin-top: 4px;
+}
+.auth-footer {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: var(--hairline);
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.auth-footer a {
+  color: var(--ink);
+  font-weight: 500;
+}
+.auth-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+.form-error {
+  padding: 10px 12px;
+  border: 1px solid var(--fail-line);
+  border-radius: var(--radius);
+  background: var(--fail-bg);
+  color: var(--stop-deep);
+  font-size: 14px;
+}
+.notice {
+  padding: 12px 14px;
+  border-left: 2px solid var(--ink);
+  background: var(--sheet);
+  font-size: 14px;
+}
+.qr {
+  width: 184px;
+  padding: 10px;
+  background: #fff;
+  border: var(--hairline);
+}
+.secret {
+  font-family: var(--mono);
+  font-size: 13px;
+  word-break: break-all;
+  color: var(--ink-2);
+}
+.codes {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 24px;
+  padding: 14px 16px;
+  border: var(--hairline);
+  background: var(--sheet);
+  font-family: var(--mono);
+  font-size: 14px;
+}
+
+@media (max-width: 840px) {
+  .auth {
+    grid-template-columns: 1fr;
+  }
+  .auth-side {
+    display: none;
+  }
+  .auth-main {
+    padding: 32px 16px;
+    align-self: start;
+  }
+  .auth-logo {
+    margin-bottom: 32px;
+  }
+}

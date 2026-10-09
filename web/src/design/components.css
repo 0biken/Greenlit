@@ -1,0 +1,540 @@
+/* Shared components. Structure from hairlines, not boxes or shadows; 3 px corners. */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- type helpers ---------- */
+.overline {
+  font-family: var(--sans);
+  font-size: var(--text-overline);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.mono {
+  font-family: var(--mono);
+  font-size: 0.92em;
+}
+.muted {
+  color: var(--ink-2);
+}
+.faint {
+  color: var(--ink-3);
+}
+.serif-lead {
+  font-family: var(--serif);
+  font-size: 19px;
+  line-height: 1.4;
+  letter-spacing: -0.003em;
+}
+
+/* ---------- chips ---------- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 9px 0 7px;
+  border: 1px solid;
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+.chip svg {
+  flex: none;
+}
+.chip-pass {
+  color: var(--tick-deep);
+  background: var(--pass-bg);
+  border-color: var(--pass-line);
+}
+.chip-fail {
+  color: var(--stop-deep);
+  background: var(--fail-bg);
+  border-color: var(--fail-line);
+}
+.chip-hold {
+  color: var(--hold-deep);
+  background: var(--hold-bg);
+  border-color: var(--hold-line);
+}
+.chip-open {
+  color: var(--graphite-deep);
+  background: var(--open-bg);
+  border-color: var(--open-line);
+}
+.chip-draft {
+  color: var(--pencil);
+  background: var(--draft-bg);
+  border-color: var(--draft-line);
+}
+.chip-ver {
+  --tick-mark: var(--tick-lift);
+  color: var(--paper);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+/* ---------- IDs ---------- */
+.id {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  padding: 0 6px;
+  border-radius: 2px;
+  background: var(--paper-2);
+  color: var(--ink);
+  white-space: nowrap;
+  text-decoration: none;
+}
+.id-link {
+  transition: background-color 120ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .id-link:hover {
+    background: var(--rule-soft);
+    text-decoration: underline;
+    text-decoration-color: var(--ink-3);
+  }
+}
+
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  user-select: none;
+  transition:
+    transform var(--dur-press) var(--ease-out),
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.btn-sm {
+  height: 30px;
+  padding: 0 11px;
+  font-size: 13px;
+}
+.btn-primary {
+  background: var(--ink);
+  color: var(--paper);
+}
+.btn-secondary {
+  background: transparent;
+  color: var(--ink);
+}
+.btn-go {
+  background: var(--tick);
+  border-color: var(--tick);
+  color: var(--ink);
+}
+.btn-danger {
+  border-color: var(--stop);
+  color: var(--stop-deep);
+}
+.btn-quiet {
+  border-color: transparent;
+  color: var(--ink-2);
+}
+/* "Sign off anyway" waits, dashed, until a reason is written (UX §8). */
+.btn-go:disabled {
+  opacity: 1;
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--graphite);
+  color: var(--ink-3);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover:not(:disabled) {
+    background: #2b2e24;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--paper-2);
+  }
+  .btn-go:hover:not(:disabled) {
+    background: #1e9142;
+  }
+  .btn-danger:hover:not(:disabled) {
+    background: var(--fail-bg);
+  }
+  .btn-quiet:hover:not(:disabled) {
+    background: var(--paper-2);
+    color: var(--ink);
+  }
+}
+@media (pointer: coarse) {
+  .btn,
+  .btn-sm {
+    min-height: 44px;
+  }
+}
+
+/* ---------- forms ---------- */
+.field {
+  display: grid;
+  gap: 6px;
+}
+.field-label {
+  font-size: var(--text-label);
+  font-weight: 500;
+}
+.field-hint {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.field-error {
+  font-size: 13px;
+  color: var(--stop-deep);
+}
+.input,
+.textarea {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 11px;
+  background: var(--sheet);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  transition: border-color 120ms ease;
+}
+.textarea {
+  min-height: 96px;
+  resize: vertical;
+  line-height: 1.5;
+}
+.input:focus-visible,
+.textarea:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 0;
+  border-color: var(--pencil);
+}
+.input[aria-invalid='true'] {
+  border-color: var(--stop);
+}
+.input-code {
+  font-family: var(--mono);
+  font-size: 20px;
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+
+/* ---------- the ledger: marks in the margin, hairlines between rows ---------- */
+.ledger {
+  border-top: 1px solid var(--ink);
+}
+.ledger-group {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 22px 0 8px;
+  border-bottom: 1px solid var(--ink);
+}
+.ledger-row {
+  display: grid;
+  grid-template-columns: var(--margin-col) 1fr;
+  align-items: center;
+  min-height: 52px;
+  border-bottom: var(--hairline);
+}
+.ledger-margin {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  height: 100%;
+  padding-right: 16px;
+  border-right: var(--hairline);
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.ledger-body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 0 10px 16px;
+}
+
+/* ---------- progress (verified coverage) ---------- */
+.prog {
+  height: 6px;
+  background: var(--rule-soft);
+  overflow: hidden;
+}
+.prog > i {
+  display: block;
+  height: 100%;
+  background: var(--tick);
+  transform-origin: left;
+  transition: transform 600ms var(--ease-out);
+}
+
+/* ---------- states ---------- */
+.state {
+  padding: 48px 0;
+  max-width: 520px;
+}
+.state-title {
+  font-family: var(--serif);
+  font-size: 24px;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+.state-body {
+  margin-top: 8px;
+  color: var(--ink-2);
+}
+.state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+.skel {
+  display: inline-block;
+  height: 12px;
+  width: 50%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--paper-2) 0%, var(--rule-soft) 50%, var(--paper-2) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+.skel-mark {
+  width: 14px;
+  height: 14px;
+}
+.skel-id {
+  width: 72px;
+  flex: none;
+}
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skel {
+    animation: none;
+  }
+}
+
+/* ---------- popovers and menus: grow from the trigger ---------- */
+.menu,
+.tooltip {
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin, var(--radix-tooltip-content-transform-origin));
+}
+.menu {
+  min-width: 220px;
+  padding: 4px;
+  background: var(--sheet);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 20px rgb(22 24 18 / 0.1);
+  z-index: 50;
+}
+.menu[data-state='open'] {
+  animation: pop-in var(--dur-pop) var(--ease-out);
+}
+.menu[data-state='closed'] {
+  animation: pop-out var(--dur-pop-exit) var(--ease-out);
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 2px;
+  font-size: 14px;
+  cursor: default;
+  outline: none;
+  user-select: none;
+}
+.menu-item[data-highlighted] {
+  background: var(--paper-2);
+}
+.menu-label {
+  padding: 8px 10px 4px;
+  font-size: var(--text-overline);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.menu-sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--rule);
+}
+.tooltip {
+  padding: 5px 9px;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  z-index: 60;
+}
+.tooltip[data-state='delayed-open'] {
+  animation: pop-in 125ms var(--ease-out);
+}
+/* Neighbouring tooltips open instantly: no animation once one is showing. */
+.tooltip[data-state='instant-open'] {
+  animation: none;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@keyframes pop-out {
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+/* ---------- dialog: centred, not origin-aware ---------- */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(22 24 18 / 0.32);
+  z-index: 70;
+}
+.dialog-overlay[data-state='open'] {
+  animation: fade-in var(--dur-dialog) var(--ease-out);
+}
+.dialog-overlay[data-state='closed'] {
+  animation: fade-out 150ms var(--ease-out);
+}
+.dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: calc(100vw - 32px);
+  max-height: calc(100dvh - 48px);
+  overflow: auto;
+  translate: -50% -50%;
+  padding: 28px;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 0 24px 60px rgb(22 24 18 / 0.18);
+  z-index: 71;
+}
+.dialog[data-state='open'] {
+  animation: dialog-in var(--dur-dialog) var(--ease-out);
+}
+.dialog[data-state='closed'] {
+  animation: pop-out 150ms var(--ease-out);
+}
+.dialog-title {
+  font-size: 26px;
+  line-height: 1.2;
+  letter-spacing: -0.012em;
+}
+.dialog-desc {
+  margin-top: 8px;
+  color: var(--ink-2);
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu[data-state='open'],
+  .tooltip[data-state='delayed-open'],
+  .dialog[data-state='open'] {
+    animation: fade-in 120ms ease;
+  }
+  .menu[data-state='closed'],
+  .dialog[data-state='closed'] {
+    animation: fade-out 100ms ease;
+  }
+  .btn:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* ---------- the tick draws itself in, once, when a release turns Ready ---------- */
+.mark-draw path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw-tick 520ms var(--ease-out) 120ms forwards;
+}
+@keyframes draw-tick {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mark-draw path {
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+}
+
+/* ---------- keyboard hint ---------- */
+kbd,
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border: 1px solid var(--rule);
+  border-bottom-width: 2px;
+  border-radius: var(--radius);
+  background: var(--sheet);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-2);
+}

@@ -1,0 +1,235 @@
+.inbox-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 40px;
+  align-items: start;
+}
+
+/* ---------- group filters (sidebar on desktop, chips on a phone) ---------- */
+.inbox-filters {
+  position: sticky;
+  top: calc(var(--topbar-h) + 24px);
+  display: grid;
+  gap: 1px;
+  border-top: 1px solid var(--ink);
+  padding-top: 8px;
+}
+.filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  color: var(--ink-2);
+  text-align: left;
+}
+.filter-count {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.filter[aria-current='true'] {
+  background: var(--ink);
+  color: var(--paper);
+}
+.filter[aria-current='true'] .filter-count {
+  color: var(--rule);
+}
+@media (hover: hover) and (pointer: fine) {
+  .filter:not([aria-current='true']):hover {
+    background: var(--paper-2);
+    color: var(--ink);
+  }
+}
+.inbox-filters-sep {
+  height: 1px;
+  margin: 8px 0;
+  background: var(--rule);
+}
+
+/* ---------- rows ---------- */
+.inbox-main {
+  min-width: 0;
+}
+.inbox-main > div:first-child .ledger-group,
+.inbox-main > .stale-copy + div .ledger-group {
+  padding-top: 0;
+}
+.inbox-list {
+  list-style: none;
+  padding: 0;
+}
+.inbox-row {
+  outline: none;
+  /* Hover and keyboard focus change instantly: these rows are walked through all day. */
+}
+.inbox-row[data-current] {
+  background: var(--sheet);
+}
+.inbox-row:focus-visible {
+  box-shadow: inset 2px 0 0 var(--pencil);
+  background: var(--sheet);
+}
+@media (hover: hover) and (pointer: fine) {
+  .inbox-row:hover {
+    background: var(--sheet);
+  }
+}
+.inbox-age {
+  font-size: 12.5px;
+}
+.inbox-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'main status actions'
+    'meta status actions';
+  column-gap: 16px;
+  row-gap: 2px;
+}
+.inbox-main-line {
+  grid-area: main;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.inbox-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.inbox-meta {
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 14px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.inbox-status {
+  grid-area: status;
+  align-self: center;
+}
+.inbox-actions {
+  grid-area: actions;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  align-self: center;
+}
+.row-menu {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius);
+  color: var(--ink-3);
+}
+.row-menu[data-state='open'] {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+@media (hover: hover) and (pointer: fine) {
+  .row-menu:hover {
+    background: var(--paper-2);
+    color: var(--ink);
+  }
+}
+
+/* The critical band: closed in the tracker with a failed retest. Red marks, not red fills. */
+.critical-band {
+  margin-bottom: 8px;
+}
+.critical-band .ledger-group {
+  border-bottom-color: var(--stop);
+}
+.critical-band .ledger-group .overline {
+  color: var(--stop-deep);
+}
+.critical-band .ledger-margin {
+  border-right: 2px solid var(--stop);
+}
+.small {
+  font-size: 13px;
+}
+
+.stale-copy {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border-left: 2px solid var(--hold);
+  background: var(--sheet);
+  font-size: 14px;
+}
+.inbox-keys {
+  margin-top: 20px;
+  font-size: 13px;
+}
+
+/* ---------- tablet and phone ---------- */
+@media (max-width: 1024px) {
+  .inbox-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .inbox-filters {
+    position: static;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 0 0 4px;
+    border-top: 0;
+    scrollbar-width: none;
+  }
+  .filter {
+    flex: none;
+    min-height: 36px;
+    border: var(--hairline);
+  }
+  .inbox-filters-sep {
+    display: none;
+  }
+}
+@media (max-width: 640px) {
+  .ledger-row.inbox-row {
+    grid-template-columns: 52px 1fr;
+  }
+  .inbox-row .ledger-margin {
+    flex-direction: column-reverse;
+    justify-content: center;
+    gap: 2px;
+    padding-right: 10px;
+  }
+  .inbox-body {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'main'
+      'meta'
+      'status'
+      'actions';
+    row-gap: 8px;
+    padding-left: 12px;
+  }
+  .inbox-main-line {
+    flex-wrap: wrap;
+  }
+  .inbox-title {
+    white-space: normal;
+  }
+  .inbox-status {
+    justify-self: start;
+  }
+  .filter,
+  .inbox-actions .btn,
+  .row-menu {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .inbox-keys {
+    display: none;
+  }
+}
