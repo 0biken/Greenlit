@@ -115,9 +115,33 @@ paths:
                 $ref: '#/components/schemas/Health'
           description: ''
   /api/invites/:
+    get:
+      operationId: invites_list
+      description: 'GET: pending invitations. POST: email an invitation with a chosen
+        role.'
+      tags:
+      - invites
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Invitation'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invitation'
+          description: ''
     post:
       operationId: invites_create
-      description: Email an invitation to join this organisation with a chosen role.
+      description: 'GET: pending invitations. POST: email an invitation with a chosen
+        role.'
       tags:
       - invites
       requestBody:
@@ -135,12 +159,38 @@ paths:
       security:
       - cookieAuth: []
       responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Invitation'
+          description: ''
         '201':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Invitation'
           description: ''
+  /api/invites/{invite_id}/:
+    delete:
+      operationId: invites_destroy
+      description: Revoke a pending invitation; its link stops working.
+      parameters:
+      - in: path
+        name: invite_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - invites
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/invites/accept/:
     post:
       operationId: invites_accept_create
@@ -263,7 +313,7 @@ paths:
   /api/members/:
     get:
       operationId: members_list
-      description: People in this organisation.
+      description: People in this organisation. Removed members are not listed.
       tags:
       - members
       security:
@@ -277,6 +327,64 @@ paths:
                 items:
                   $ref: '#/components/schemas/Member'
           description: ''
+  /api/members/{user_id}/:
+    patch:
+      operationId: members_partial_update
+      description: 'PATCH: change someone''s role. DELETE: remove them from the organisation.'
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - members
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRoleChange'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRoleChange'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRoleChange'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+          description: ''
+        '204':
+          description: No response body
+    delete:
+      operationId: members_destroy
+      description: 'PATCH: change someone''s role. DELETE: remove them from the organisation.'
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - members
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+          description: ''
+        '204':
+          description: No response body
   /api/org/:
     get:
       operationId: org_retrieve
@@ -380,7 +488,8 @@ paths:
   /api/projects/{key}/:
     get:
       operationId: projects_retrieve
-      description: One project, by key. A project the member cannot see is not found.
+      description: 'GET: one project with its settings. PATCH: rename it, or change
+        client or settings.'
       parameters:
       - in: path
         name: key
@@ -396,7 +505,39 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Project'
+                $ref: '#/components/schemas/ProjectDetail'
+          description: ''
+    patch:
+      operationId: projects_partial_update
+      description: 'GET: one project with its settings. PATCH: rename it, or change
+        client or settings.'
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProjectUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProjectUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProjectUpdate'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDetail'
           description: ''
   /api/projects/{key}/files/:
     post:
@@ -432,6 +573,92 @@ paths:
               schema:
                 $ref: '#/components/schemas/UploadStarted'
           description: ''
+  /api/projects/{key}/members/:
+    get:
+      operationId: projects_members_list
+      description: 'GET: who is on the project. POST: add an organisation member to
+        it.'
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectMember'
+          description: ''
+        '204':
+          description: No response body
+    post:
+      operationId: projects_members_create
+      description: 'GET: who is on the project. POST: add an organisation member to
+        it.'
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectMemberAdd'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProjectMemberAdd'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProjectMemberAdd'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectMember'
+          description: ''
+        '204':
+          description: No response body
+  /api/projects/{key}/members/{user_id}/:
+    delete:
+      operationId: projects_members_destroy
+      description: Take someone off the project. They stay in the organisation.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: user_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/sessions/end-all/:
     post:
       operationId: sessions_end_all_create
@@ -557,10 +784,14 @@ components:
         expires_at:
           type: string
           format: date-time
+        invited_by:
+          type: string
+          format: email
       required:
       - email
       - expires_at
       - id
+      - invited_by
       - role
     Invite:
       type: object
@@ -720,6 +951,23 @@ components:
       - id
       - name
       - slug
+    PatchedProjectUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        client_name:
+          type: string
+          maxLength: 200
+        settings:
+          type: object
+          additionalProperties: {}
+    PatchedRoleChange:
+      type: object
+      properties:
+        role:
+          $ref: '#/components/schemas/RoleEnum'
     Project:
       type: object
       properties:
@@ -757,6 +1005,51 @@ components:
       required:
       - key
       - name
+    ProjectDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        key:
+          type: string
+        name:
+          type: string
+        client_name:
+          type: string
+        settings:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+      required:
+      - client_name
+      - id
+      - key
+      - name
+      - settings
+    ProjectMember:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+      required:
+      - email
+      - name
+      - user_id
+    ProjectMemberAdd:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+      required:
+      - user_id
     RoleEnum:
       enum:
       - owner

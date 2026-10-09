@@ -1,4 +1,6 @@
-"""Organisations, invitations, members and projects (M1-08, M1-09)."""
+"""Organisations, invitations, members and projects (M1-08, M1-09, M1-19)."""
+
+from uuid import UUID
 
 from drf_spectacular.utils import extend_schema
 from rest_framework import serializers, status
@@ -7,15 +9,18 @@ from rest_framework.exceptions import NotFound, PermissionDenied, ValidationErro
 from rest_framework.response import Response
 
 from apps.core import services
-from apps.core.models import Membership, MembershipStatus, Project, Role
+from apps.core.models import Membership, MembershipStatus, Project, ProjectMember, Role
 from apps.core.policy import Action, AuthenticatedOnly, requires, visible_projects
+from apps.core.project_settings import project_settings
 
 
 def _run(fn, *args, **kwargs):
-    """Call a service function, turning a broken rule into a 400 with its message."""
+    """Call a service function, turning a broken rule into the matching HTTP answer."""
     try:
         return fn(*args, **kwargs)
     except services.ServiceError as error:
+        if error.code == "not_found":
+            raise NotFound() from error
         if error.code == "forbidden":
             raise PermissionDenied(error.message) from error
         raise ValidationError({"detail": error.message, "code": error.code}) from error
@@ -70,13 +75,20 @@ class InvitationSerializer(serializers.Serializer):
     email = serializers.EmailField()
     role = serializers.CharField()
     expires_at = serializers.DateTimeField()
+    invited_by = serializers.EmailField(source="invited_by.email")
 
 
-@extend_schema(request=InviteSerializer, responses={201: InvitationSerializer})
-@api_view(["POST"])
+@extend_schema(
+    request=InviteSerializer,
+    responses={200: InvitationSerializer(many=True), 201: InvitationSerializer},
+)
+@api_view(["GET", "POST"])
 @permission_classes(requires(Action.MANAGE_MEMBERS))
 def invite(request):
-    """Email an invitation to join this organisation with a chosen role."""
+    """GET: pending invitations. POST: email an invitation with a chosen role."""
+    if request.method == "GET":
+        rows = services.pending_invitations().select_related("invited_by")
+        return Response(InvitationSerializer(rows, many=True).data)
     body = InviteSerializer(data=request.data)
     body.is_valid(raise_exception=True)
     invitation = _run(
@@ -87,6 +99,15 @@ def invite(request):
         body.validated_data["role"],
     )
     return Response(InvitationSerializer(invitation).data, status=status.HTTP_201_CREATED)
+
+
+@extend_schema(request=None, responses={204: None})
+@api_view(["DELETE"])
+@permission_classes(requires(Action.MANAGE_MEMBERS))
+def invite_detail(request, invite_id: UUID):
+    """Revoke a pending invitation; its link stops working."""
+    _run(services.revoke_invitation, request._request.membership, invite_id)
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class AcceptInviteSerializer(serializers.Serializer):
@@ -122,17 +143,36 @@ class MemberSerializer(serializers.Serializer):
     status = serializers.CharField()
 
 
+class RoleChangeSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(choices=Role.choices)
+
+
 @extend_schema(responses=MemberSerializer(many=True))
 @api_view(["GET"])
 @permission_classes(requires(Action.VIEW))
 def members(request):
-    """People in this organisation."""
+    """People in this organisation. Removed members are not listed."""
     rows = (
         Membership.objects.filter(status__in=[MembershipStatus.ACTIVE, MembershipStatus.INVITED])
         .select_related("user")
         .order_by("created_at")
     )
     return Response(MemberSerializer(rows, many=True).data)
+
+
+@extend_schema(request=RoleChangeSerializer, responses={200: MemberSerializer, 204: None})
+@api_view(["PATCH", "DELETE"])
+@permission_classes(requires(Action.MANAGE_MEMBERS))
+def member_detail(request, user_id: UUID):
+    """PATCH: change someone's role. DELETE: remove them from the organisation."""
+    actor = request._request.membership
+    if request.method == "DELETE":
+        _run(services.remove_member, actor, user_id)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    body = RoleChangeSerializer(data=request.data)
+    body.is_valid(raise_exception=True)
+    changed = _run(services.change_role, actor, user_id, body.validated_data["role"])
+    return Response(MemberSerializer(changed).data)
 
 
 # --- Projects ------------------------------------------------------------------------------
@@ -150,6 +190,40 @@ class ProjectSerializer(serializers.Serializer):
     key = serializers.CharField()
     name = serializers.CharField()
     client_name = serializers.CharField()
+
+
+class ProjectDetailSerializer(ProjectSerializer):
+    settings = serializers.SerializerMethodField()
+
+    def get_settings(self, project) -> dict:
+        return project_settings(project)
+
+
+class ProjectUpdateSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=200, required=False)
+    client_name = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    settings = serializers.DictField(required=False)
+
+
+class ProjectMemberSerializer(serializers.Serializer):
+    user_id = serializers.UUIDField()
+    email = serializers.EmailField(source="user.email")
+    name = serializers.CharField(source="user.name")
+
+
+class ProjectMemberAddSerializer(serializers.Serializer):
+    user_id = serializers.UUIDField()
+
+
+def _project(request, key: str) -> Project:
+    project = (
+        visible_projects(Project.objects.all(), request._request.membership)
+        .filter(key=key.upper())
+        .first()
+    )
+    if project is None:
+        raise NotFound()
+    return project
 
 
 @extend_schema(
@@ -179,16 +253,56 @@ def projects(request):
     return Response(ProjectSerializer(project).data, status=status.HTTP_201_CREATED)
 
 
-@extend_schema(responses=ProjectSerializer)
-@api_view(["GET"])
-@permission_classes(requires(Action.VIEW))
+@extend_schema(request=ProjectUpdateSerializer, responses=ProjectDetailSerializer)
+@api_view(["GET", "PATCH"])
+@permission_classes(requires({"GET": Action.VIEW, "PATCH": Action.CREATE_PROJECT}))
 def project_detail(request, key: str):
-    """One project, by key. A project the member cannot see is not found."""
-    project = (
-        visible_projects(Project.objects.all(), request._request.membership)
-        .filter(key=key.upper())
-        .first()
+    """GET: one project with its settings. PATCH: rename it, or change client or settings."""
+    project = _project(request, key)
+    if request.method == "PATCH":
+        body = ProjectUpdateSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        data = body.validated_data
+        project = _run(
+            services.update_project,
+            request._request.membership,
+            project,
+            name=data.get("name"),
+            client_name=data.get("client_name"),
+            settings_changes=data.get("settings"),
+        )
+    return Response(ProjectDetailSerializer(project).data)
+
+
+@extend_schema(
+    request=ProjectMemberAddSerializer,
+    responses={200: ProjectMemberSerializer(many=True), 204: None},
+)
+@api_view(["GET", "POST"])
+@permission_classes(requires({"GET": Action.VIEW, "POST": Action.CREATE_PROJECT}))
+def project_members(request, key: str):
+    """GET: who is on the project. POST: add an organisation member to it."""
+    project = _project(request, key)
+    if request.method == "GET":
+        rows = ProjectMember.objects.filter(project=project).select_related("user")
+        return Response(ProjectMemberSerializer(rows, many=True).data)
+    body = ProjectMemberAddSerializer(data=request.data)
+    body.is_valid(raise_exception=True)
+    _run(
+        services.add_project_member,
+        request._request.membership,
+        project,
+        body.validated_data["user_id"],
     )
-    if project is None:
-        raise NotFound()
-    return Response(ProjectSerializer(project).data)
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@extend_schema(request=None, responses={204: None})
+@api_view(["DELETE"])
+@permission_classes(requires(Action.CREATE_PROJECT))
+def project_member_detail(request, key: str, user_id: UUID):
+    """Take someone off the project. They stay in the organisation."""
+    _run(
+        services.remove_project_member, request._request.membership, _project(request, key), user_id
+    )
+    return Response(status=status.HTTP_204_NO_CONTENT)

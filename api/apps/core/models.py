@@ -130,6 +130,8 @@ class Project(TenantModel):
     name = models.CharField(max_length=200)
     client_name = models.CharField(max_length=200, blank=True)
     key = models.CharField(max_length=6, validators=[RegexValidator(r"^[A-Za-z]{2,6}$")])
+    # Per-project thresholds; see apps/core/project_settings.py for the keys and defaults.
+    settings = models.JSONField(default=dict, blank=True)
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["org_id", "key"], name="project_key_unique")]

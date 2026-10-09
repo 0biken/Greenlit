@@ -48,7 +48,7 @@ There are 30 tables: 28 listed here in seven groups, the requirement-to-case lin
 | organisation | name, slug, plan\_tier, ai\_allowance | Root of every tenant; `org_id` on its own row equals `id` |
 | user | email, name, auth\_provider | Global; not scoped to one organisation |
 | membership | user\_id, role (enum: owner, admin, qa\_lead, qa\_engineer, developer, viewer), status | One row per user per organisation |
-| project | name, client\_name, key (text, 2 to 6 letters), settings (json) | `key` is unique in the organisation; `settings` holds the per-project thresholds in section 9 and is validated against fixed defaults |
+| project | name, client\_name, key (text, 2 to 6 letters), settings (json) | `key` is unique in the organisation; `settings` holds the per-project thresholds in section 9: `stale_after_days` (30), `retest_escalation_hours` (48, then 96), `aging_days` per severity (2, 7, 14, 30) and `fixer_cannot_verify` (true); missing keys take those defaults |
 | project\_member | project\_id, user\_id | Who sees a project; owners and admins see all |
 | invitation | email, role, token\_hash, expires\_at, accepted\_at, revoked\_at, invited\_by | Only a hash of the emailed token is stored; a new invitation to the same address revokes the earlier one; the holder of a token can read that one row before joining (section 8) |
 

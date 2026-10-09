@@ -112,11 +112,29 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** @description GET: pending invitations. POST: email an invitation with a chosen role. */
+        get: operations["invites_list"];
         put?: never;
-        /** @description Email an invitation to join this organisation with a chosen role. */
+        /** @description GET: pending invitations. POST: email an invitation with a chosen role. */
         post: operations["invites_create"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invites/{invite_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description Revoke a pending invitation; its link stops working. */
+        delete: operations["invites_destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -214,7 +232,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description People in this organisation. */
+        /** @description People in this organisation. Removed members are not listed. */
         get: operations["members_list"];
         put?: never;
         post?: never;
@@ -222,6 +240,24 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/members/{user_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description PATCH: change someone's role. DELETE: remove them from the organisation. */
+        delete: operations["members_destroy"];
+        options?: never;
+        head?: never;
+        /** @description PATCH: change someone's role. DELETE: remove them from the organisation. */
+        patch: operations["members_partial_update"];
         trace?: never;
     };
     "/api/org/": {
@@ -283,14 +319,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description One project, by key. A project the member cannot see is not found. */
+        /** @description GET: one project with its settings. PATCH: rename it, or change client or settings. */
         get: operations["projects_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /** @description GET: one project with its settings. PATCH: rename it, or change client or settings. */
+        patch: operations["projects_partial_update"];
         trace?: never;
     };
     "/api/projects/{key}/files/": {
@@ -305,6 +342,41 @@ export interface paths {
         /** @description Start an upload: returns a link valid for 15 minutes to send the bytes to. */
         post: operations["projects_files_create"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/members/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET: who is on the project. POST: add an organisation member to it. */
+        get: operations["projects_members_list"];
+        put?: never;
+        /** @description GET: who is on the project. POST: add an organisation member to it. */
+        post: operations["projects_members_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/members/{user_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description Take someone off the project. They stay in the organisation. */
+        delete: operations["projects_members_destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -378,6 +450,8 @@ export interface components {
             role: string;
             /** Format: date-time */
             expires_at: string;
+            /** Format: email */
+            invited_by: string;
         };
         Invite: {
             /** Format: email */
@@ -447,6 +521,16 @@ export interface components {
             slug: string;
             name: string;
         };
+        PatchedProjectUpdate: {
+            name?: string;
+            client_name?: string;
+            settings?: {
+                [key: string]: unknown;
+            };
+        };
+        PatchedRoleChange: {
+            role?: components["schemas"]["RoleEnum"];
+        };
         Project: {
             /** Format: uuid */
             id: string;
@@ -459,6 +543,27 @@ export interface components {
             key: string;
             client_name?: string;
             member_ids?: string[];
+        };
+        ProjectDetail: {
+            /** Format: uuid */
+            id: string;
+            key: string;
+            name: string;
+            client_name: string;
+            readonly settings: {
+                [key: string]: unknown;
+            };
+        };
+        ProjectMember: {
+            /** Format: uuid */
+            user_id: string;
+            /** Format: email */
+            email: string;
+            name: string;
+        };
+        ProjectMemberAdd: {
+            /** Format: uuid */
+            user_id: string;
         };
         /**
          * @description * `owner` - Owner
@@ -627,6 +732,33 @@ export interface operations {
             };
         };
     };
+    invites_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invitation"][];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invitation"];
+                };
+            };
+        };
+    };
     invites_create: {
         parameters: {
             query?: never;
@@ -642,6 +774,14 @@ export interface operations {
             };
         };
         responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invitation"][];
+                };
+            };
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -649,6 +789,26 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Invitation"];
                 };
+            };
+        };
+    };
+    invites_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -785,6 +945,68 @@ export interface operations {
             };
         };
     };
+    members_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Member"];
+                };
+            };
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    members_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedRoleChange"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedRoleChange"];
+                "multipart/form-data": components["schemas"]["PatchedRoleChange"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Member"];
+                };
+            };
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     org_retrieve: {
         parameters: {
             query?: never;
@@ -905,7 +1127,34 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Project"];
+                    "application/json": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    projects_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedProjectUpdate"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedProjectUpdate"];
+                "multipart/form-data": components["schemas"]["PatchedProjectUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectDetail"];
                 };
             };
         };
@@ -934,6 +1183,89 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UploadStarted"];
                 };
+            };
+        };
+    };
+    projects_members_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectMember"][];
+                };
+            };
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    projects_members_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectMemberAdd"];
+                "application/x-www-form-urlencoded": components["schemas"]["ProjectMemberAdd"];
+                "multipart/form-data": components["schemas"]["ProjectMemberAdd"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectMember"][];
+                };
+            };
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    projects_members_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

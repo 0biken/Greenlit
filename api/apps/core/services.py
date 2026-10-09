@@ -234,3 +234,192 @@ def create_project(
             },
         )
     return project
+
+
+# --- Managing members (M1-19) ----------------------------------------------------------------
+
+NOT_FOUND = "Not found."
+LAST_OWNER = "An organisation needs at least one owner. Make someone else an owner first."
+OWNERS_ONLY = "Only an owner can change an owner, or make someone an owner."
+
+
+def _active_member(user_id) -> Membership:
+    """An active member of the current organisation, or not found (never "forbidden")."""
+    target = (
+        Membership.objects.filter(user_id=user_id, status=MembershipStatus.ACTIVE)
+        .select_related("user")
+        .first()
+    )
+    if target is None:
+        raise ServiceError(NOT_FOUND, code="not_found")
+    return target
+
+
+def _leaves_no_owner(target: Membership) -> bool:
+    if target.role != Role.OWNER:
+        return False
+    return Membership.objects.filter(role=Role.OWNER, status=MembershipStatus.ACTIVE).count() <= 1
+
+
+def change_role(actor: Membership, user_id, role: str) -> Membership:
+    if role not in Role.values:
+        raise ServiceError("Choose a valid role.")
+    target = _active_member(user_id)
+    if target.role == role:
+        return target
+    if Role.OWNER in (target.role, role) and actor.role != Role.OWNER:
+        raise ServiceError(OWNERS_ONLY, code="forbidden")
+    if role != Role.OWNER and _leaves_no_owner(target):
+        raise ServiceError(LAST_OWNER, code="last_owner")
+
+    before = target.role
+    with transaction.atomic():
+        target.role = role
+        target.save(update_fields=["role", "updated_at"])
+        audit.record(
+            "member.role_changed",
+            "membership",
+            target.pk,
+            actor=actor.user,
+            before={"role": before},
+            after={"role": role},
+        )
+    return target
+
+
+def remove_member(actor: Membership, user_id) -> None:
+    """Take someone out of the organisation. Their account and other organisations remain."""
+    target = _active_member(user_id)
+    if target.role == Role.OWNER and actor.role != Role.OWNER:
+        raise ServiceError(OWNERS_ONLY, code="forbidden")
+    if _leaves_no_owner(target):
+        raise ServiceError(LAST_OWNER, code="last_owner")
+    with transaction.atomic():
+        target.status = MembershipStatus.REMOVED
+        target.save(update_fields=["status", "updated_at"])
+        ProjectMember.objects.filter(user_id=target.user_id).delete()  # soft delete
+        audit.record(
+            "member.removed",
+            "membership",
+            target.pk,
+            actor=actor.user,
+            before={"status": MembershipStatus.ACTIVE.value, "role": target.role},
+            after={"status": MembershipStatus.REMOVED.value},
+        )
+
+
+def pending_invitations():
+    return Invitation.objects.filter(
+        accepted_at__isnull=True, revoked_at__isnull=True, expires_at__gt=timezone.now()
+    ).order_by("-created_at")
+
+
+def revoke_invitation(actor: Membership, invitation_id) -> None:
+    invitation = pending_invitations().filter(pk=invitation_id).first()
+    if invitation is None:
+        raise ServiceError(NOT_FOUND, code="not_found")
+    with transaction.atomic():
+        invitation.revoked_at = timezone.now()
+        invitation.save(update_fields=["revoked_at", "updated_at"])
+        audit.record(
+            "invitation.revoked",
+            "invitation",
+            invitation.pk,
+            actor=actor.user,
+            before={"email": invitation.email, "state": "pending"},
+            after={"state": "revoked"},
+        )
+
+
+# --- Changing projects (M1-19) ---------------------------------------------------------------
+
+
+def update_project(
+    actor: Membership,
+    project: Project,
+    name: str | None = None,
+    client_name: str | None = None,
+    settings_changes: dict | None = None,
+) -> Project:
+    from apps.core.project_settings import clean_settings
+
+    before: dict = {}
+    after: dict = {}
+    if name is not None:
+        name = name.strip()
+        if not name:
+            raise ServiceError("Give the project a name.")
+        if name != project.name:
+            before["name"], after["name"] = project.name, name
+    if client_name is not None and client_name.strip() != project.client_name:
+        before["client_name"], after["client_name"] = project.client_name, client_name.strip()
+    new_settings = None
+    if settings_changes is not None:
+        new_settings = clean_settings(project.settings, settings_changes)
+        if new_settings == project.settings:
+            new_settings = None
+
+    with transaction.atomic():
+        if after:
+            for field_name, value in after.items():
+                setattr(project, field_name, value)
+            project.save(update_fields=[*after, "updated_at"])
+            audit.record(
+                "project.updated",
+                "project",
+                project.pk,
+                actor=actor.user,
+                before=before,
+                after=after,
+            )
+        if new_settings is not None:
+            old = project.settings
+            project.settings = new_settings
+            project.save(update_fields=["settings", "updated_at"])
+            audit.record(
+                "project.settings_changed",
+                "project",
+                project.pk,
+                actor=actor.user,
+                before={"settings": old},
+                after={"settings": new_settings},
+            )
+    return project
+
+
+def add_project_member(actor: Membership, project: Project, user_id) -> None:
+    target = _active_member(user_id)
+    existing = ProjectMember.all_objects.filter(project=project, user_id=target.user_id).first()
+    if existing is not None and existing.deleted_at is None:
+        return  # already on the project
+    with transaction.atomic():
+        if existing is not None:
+            # The unique (project, user) row survives a soft delete, so restore it.
+            existing.deleted_at = None
+            existing.save(update_fields=["deleted_at", "updated_at"])
+        else:
+            ProjectMember.objects.create(
+                org_id=project.org_id, project=project, user_id=target.user_id
+            )
+        audit.record(
+            "project.member_added",
+            "project",
+            project.pk,
+            actor=actor.user,
+            after={"user_id": str(target.user_id)},
+        )
+
+
+def remove_project_member(actor: Membership, project: Project, user_id) -> None:
+    row = ProjectMember.objects.filter(project=project, user_id=user_id).first()
+    if row is None:
+        raise ServiceError(NOT_FOUND, code="not_found")
+    with transaction.atomic():
+        row.delete()  # soft delete
+        audit.record(
+            "project.member_removed",
+            "project",
+            project.pk,
+            actor=actor.user,
+            before={"user_id": str(user_id)},
+        )

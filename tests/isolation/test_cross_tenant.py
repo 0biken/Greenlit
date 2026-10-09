@@ -252,3 +252,34 @@ def test_alphas_organisation_record_is_the_only_one_visible(world):
     as_app_role()
     set_scope(world.alpha.id, world.alpha_owner.pk)
     assert list(Organisation.objects.values_list("slug", flat=True)) == ["alpha-iso"]
+
+
+def test_alpha_cannot_change_or_remove_bravos_people_invitations_or_project_members(world):
+    """The write routes for managing an organisation, called by Alpha's owner with Bravo's IDs."""
+    from apps.core.models import Invitation, ProjectMember
+
+    with org_scope(world.bravo.id):
+        bravo_invite = Invitation.objects.get()
+    as_app_role()
+    client = client_for(world.alpha_owner)
+    headers = {"X-Org": "alpha-iso"}
+    engineer, owner = world.bravo_engineer.id, world.bravo_owner.id
+    calls = [
+        ("patch", f"/api/members/{engineer}/", {"role": "viewer"}),
+        ("delete", f"/api/members/{owner}/", None),
+        ("delete", f"/api/invites/{bravo_invite.id}/", None),
+        ("post", "/api/projects/shared/members/", {"user_id": str(engineer)}),
+        ("delete", f"/api/projects/shared/members/{engineer}/", None),
+    ]
+    for method, path, body in calls:
+        kwargs: dict = {"headers": headers}
+        if body is not None:
+            kwargs.update(data=body, content_type="application/json")
+        assert getattr(client, method)(path, **kwargs).status_code == 404, (method, path)
+
+    with org_scope(world.bravo.id):
+        assert Membership.objects.get(user=world.bravo_engineer).role == "qa_engineer"
+        assert Invitation.objects.get().revoked_at is None
+        assert ProjectMember.objects.filter(user=world.bravo_engineer).exists()
+    with org_scope(world.alpha.id):
+        assert not ProjectMember.objects.filter(user=world.bravo_engineer).exists()

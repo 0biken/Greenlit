@@ -5,14 +5,18 @@ DRF's silent default. Endpoints with a role-gated method other than GET need a b
 SAMPLES, and routes with URL parameters need an entry in PARAMS, so they are exercised too.
 """
 
+import hashlib
 import itertools
 import uuid
+from datetime import timedelta
 
 import pytest
 from django.db import connection
 from django.test import Client
+from django.utils import timezone
 
 from apps.core.models import (
+    Invitation,
     Job,
     JobState,
     Membership,
@@ -40,20 +44,27 @@ def _letters(n: int) -> str:
     return out
 
 
-# Request bodies for role-gated methods other than GET. Each call must produce fresh values.
+# Request bodies for role-gated methods other than GET. Each is called with the fixture's
+# context and must produce fresh values, because every role makes the call in turn.
 SAMPLES = {
-    ("api/invites/", "post"): lambda: {
+    ("api/invites/", "post"): lambda ctx: {
         "email": f"invitee{next(_counter)}@example.com",
         "role": "viewer",
     },
-    ("api/projects/", "post"): lambda: {"name": "Sample", "key": _letters(next(_counter))},
-    ("api/jobs/<uuid:job_id>/rerun/", "post"): lambda: {},
-    ("api/projects/<str:key>/files/", "post"): lambda: {
+    ("api/projects/", "post"): lambda ctx: {"name": "Sample", "key": _letters(next(_counter))},
+    ("api/jobs/<uuid:job_id>/rerun/", "post"): lambda ctx: {},
+    ("api/projects/<str:key>/files/", "post"): lambda ctx: {
         "kind": "evidence",
         "name": "shot.png",
         "size": 100,
     },
-    ("api/files/<uuid:file_id>/complete/", "post"): lambda: {},
+    ("api/files/<uuid:file_id>/complete/", "post"): lambda ctx: {},
+    ("api/members/<uuid:user_id>/", "patch"): lambda ctx: {"role": "developer"},
+    ("api/members/<uuid:user_id>/", "delete"): lambda ctx: {},
+    ("api/invites/<uuid:invite_id>/", "delete"): lambda ctx: {},
+    ("api/projects/<str:key>/", "patch"): lambda ctx: {"client_name": "Client X"},
+    ("api/projects/<str:key>/members/", "post"): lambda ctx: {"user_id": ctx["fresh_member"]()},
+    ("api/projects/<str:key>/members/<uuid:user_id>/", "delete"): lambda ctx: {},
 }
 
 
@@ -70,19 +81,21 @@ def role_gated_calls():
                     yield route, view_cls, method, action
 
 
-def body_for(route: str, method: str):
+def body_for(route: str, method: str, ctx: dict):
     if method == "get":
         return None
     sample = SAMPLES.get((route, method))
     assert sample is not None, (
         f"{method.upper()} {route} is role-gated; add a body sample to SAMPLES in this table"
     )
-    return sample()
+    return sample(ctx)
 
 
-def call(client: Client, route: str, method: str, org_slug: str | None, params=None):
+def call(client: Client, route: str, method: str, org_slug: str | None, ctx: dict):
     kwargs = {"headers": {"X-Org": org_slug}} if org_slug else {}
-    body = body_for(route, method)
+    body = body_for(route, method, ctx)
+    # A parameter given as a function makes a fresh target for each call.
+    params = {k: v() if callable(v) else v for k, v in ctx["params"].items()}
     if body is not None:
         kwargs.update(data=body, content_type="application/json")
     return getattr(client, method)(url_for(route, params), **kwargs)
@@ -106,7 +119,39 @@ def _org_with_a_member_of_each_role():
         job = Job.objects.create(org_id=org.id, kind="sample", state=JobState.DEAD)
         # An available file, so downloading it and completing it (a no-op) are valid requests.
         upload = stored_file(org, project, "evidence.png")
-    return org, users, {"job_id": str(job.id), "file_id": str(upload.id)}
+
+    def fresh_member() -> str:
+        """A viewer on the sample project, for calls that change or remove someone."""
+        with org_scope(org.id):
+            user = User.objects.create_user(f"target{next(_counter)}@table.example", "x" * 14)
+            Membership.objects.create(
+                org_id=org.id, user=user, role=Role.VIEWER, status=MembershipStatus.ACTIVE
+            )
+            ProjectMember.objects.create(org_id=org.id, project=project, user=user)
+        return str(user.id)
+
+    def fresh_invitation() -> str:
+        with org_scope(org.id):
+            invitation = Invitation.objects.create(
+                org_id=org.id,
+                email=f"pending{next(_counter)}@table.example",
+                role=Role.VIEWER,
+                token_hash=hashlib.sha256(uuid.uuid4().bytes).hexdigest(),
+                expires_at=timezone.now() + timedelta(days=1),
+                invited_by=users[Role.OWNER.value],
+            )
+        return str(invitation.id)
+
+    ctx = {
+        "fresh_member": fresh_member,
+        "params": {
+            "job_id": str(job.id),
+            "file_id": str(upload.id),
+            "user_id": fresh_member,
+            "invite_id": fresh_invitation,
+        },
+    }
+    return org, users, ctx
 
 
 def _as_app_role():
@@ -130,12 +175,12 @@ def test_every_endpoint_declares_a_policy(route, view_cls):
 
 @pytest.mark.parametrize("route,view_cls,method,action", list(role_gated_calls()), ids=str)
 def test_each_role_gets_the_matrix_answer(route, view_cls, method, action):
-    org, users, params = _org_with_a_member_of_each_role()
+    org, users, ctx = _org_with_a_member_of_each_role()
     _as_app_role()
     for role, user in users.items():
         client = Client()
         client.force_login(user)
-        response = call(client, route, method, org.slug, params)
+        response = call(client, route, method, org.slug, ctx)
         if can(role, action):
             assert response.status_code < 400, (
                 f"{method.upper()} {route} as {role}: {response.status_code} {response.content!r}"
@@ -148,13 +193,13 @@ def test_each_role_gets_the_matrix_answer(route, view_cls, method, action):
 
 @pytest.mark.parametrize("route,view_cls,method,action", list(role_gated_calls()), ids=str)
 def test_without_an_organisation_or_membership_it_is_not_found(route, view_cls, method, action):
-    org, _, params = _org_with_a_member_of_each_role()
+    org, _, ctx = _org_with_a_member_of_each_role()
     outsider = User.objects.create_user("outsider@table.example", "x" * 14)
     _as_app_role()
     client = Client()
     client.force_login(outsider)
-    assert call(client, route, method, None, params).status_code == 404
-    assert call(client, route, method, org.slug, params).status_code == 404
+    assert call(client, route, method, None, ctx).status_code == 404
+    assert call(client, route, method, org.slug, ctx).status_code == 404
 
 
 @pytest.mark.parametrize("route,view_cls", list(api_endpoints()), ids=lambda v: str(v))
