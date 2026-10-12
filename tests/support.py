@@ -4,7 +4,7 @@ import re
 
 from django.urls import URLPattern, URLResolver, get_resolver
 
-from apps.core.policy import AuthenticatedOnly, Public
+from apps.core.policy import AuthenticatedOnly, Public, TokenAccess
 
 HANDLED = ("get", "post", "put", "patch", "delete")
 
@@ -19,6 +19,8 @@ PARAMS = {
     "version": "0.0.0",
     "defect_id": "1",
     "run_id": "1",
+    "token": "no-such-token",
+    "link_id": "00000000-0000-0000-0000-000000000000",
     "result_id": "00000000-0000-0000-0000-000000000000",
     "item_id": "requirement.00000000-0000-0000-0000-000000000000",
 }
@@ -48,6 +50,8 @@ def declared(view_cls):
             return actions
     if any(issubclass(p, Public) for p in perms):
         return "public"
+    if any(issubclass(p, TokenAccess) for p in perms):
+        return "token"  # a share link: the token in the URL is the only credential
     if any(issubclass(p, AuthenticatedOnly) for p in perms):
         return "authenticated"
     return None
@@ -192,6 +196,7 @@ def seed_spine(org, project, lead, tester, upload, label: str = "Sample"):
     from apps.inbox.models import Snooze
     from apps.plans import services as plans
     from apps.reports import services as reports
+    from apps.reports import sharing
     from apps.requirements.services import create_requirement
     from apps.runs import services as runs
     from apps.runs.models import CaseResult
@@ -237,7 +242,10 @@ def seed_spine(org, project, lead, tester, upload, label: str = "Sample"):
     sign_off = reports.sign_off(
         release, Membership.objects.get(user=lead), reason=f"{label} accepted the risk"
     )
+    share_link, share_token = sharing.create_link(release, lead)
     return {
+        "share_link": share_link,
+        "share_token": share_token,
         "requirement": requirement,
         "plan": plan,
         "release": release,

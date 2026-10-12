@@ -108,6 +108,22 @@ export async function api<T>(path: string, options?: Options): Promise<T> {
   return body as T
 }
 
+/** Fetch a file (a PDF) and hand it to the browser as a download. */
+export async function download(path: string, options?: Pick<Options, 'noOrg'>) {
+  const response = await send(path, options)
+  if (!response.ok) throw new ApiError(response.status, await parse(response))
+  const name = /filename="([^"]+)"/.exec(response.headers.get('Content-Disposition') ?? '')?.[1]
+  const url = URL.createObjectURL(await response.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = name ?? 'report.pdf'
+  document.body.append(link)
+  link.click()
+  link.remove()
+  // Give the browser a moment to start the download before the link goes away.
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}
+
 // ---- allauth headless --------------------------------------------------------------------
 // allauth answers 401 for "not finished yet" (verify email, second step), with the pending
 // flow in data.flows. Those are steps, not failures, so they resolve rather than throw.

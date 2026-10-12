@@ -1,5 +1,5 @@
 import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ApiError, api, getCurrentOrg } from './client'
+import { ApiError, api, download, getCurrentOrg } from './client'
 import type {
   DefectDetail,
   DefectRow,
@@ -12,6 +12,9 @@ import type {
   ReleaseRow,
   RunDetail,
   RunRow,
+  ShareLink,
+  ShareLinkCreated,
+  SharedReport,
   TrackerStatus,
 } from './records'
 import type { components } from './schema'
@@ -48,6 +51,8 @@ export const keys = {
   plans: (key: string) => ['org', org(), 'project', key, 'plans'] as const,
   runs: (key: string) => ['org', org(), 'project', key, 'runs'] as const,
   run: (key: string, id: string) => ['org', org(), 'project', key, 'run', id] as const,
+  shareLinks: (key: string, version: string) => ['org', org(), 'project', key, 'release', version, 'links'] as const,
+  shared: (token: string) => ['shared', token] as const,
 }
 
 export const useMe = (enabled = true) =>
@@ -298,3 +303,43 @@ export function useCompleteRun(key: string, run: number) {
     onSuccess: invalidate,
   })
 }
+
+// ---- signed report: PDF and share links --------------------------------------------------------
+
+const releaseUrl = (key: string, version: string) => `${project(key)}/releases/${encodeURIComponent(version)}`
+
+export const downloadReportPdf = (key: string, version: string) => download(`${releaseUrl(key, version)}/report.pdf`)
+
+export const useShareLinks = (key: string, version: string, enabled: boolean) =>
+  useQuery({
+    queryKey: keys.shareLinks(key, version),
+    queryFn: () => api<ShareLink[]>(`${releaseUrl(key, version)}/share-links/`),
+    enabled,
+  })
+
+export function useCreateShareLink(key: string, version: string) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: () => api<ShareLinkCreated>(`${releaseUrl(key, version)}/share-links/`, { method: 'POST', body: {} }),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.shareLinks(key, version) }),
+  })
+}
+
+export function useRevokeShareLink(key: string, version: string) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api(`${releaseUrl(key, version)}/share-links/${id}/`, { method: 'DELETE' }),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.shareLinks(key, version) }),
+  })
+}
+
+/** What a share link shows. No sign-in and no organisation: the token is the credential. */
+export const useSharedReport = (token: string) =>
+  useQuery({
+    queryKey: keys.shared(token),
+    queryFn: () => api<SharedReport>(`/api/shared/${encodeURIComponent(token)}/`, { noOrg: true }),
+    retry: false,
+  })
+
+export const downloadSharedPdf = (token: string) =>
+  download(`/api/shared/${encodeURIComponent(token)}/report.pdf`, { noOrg: true })

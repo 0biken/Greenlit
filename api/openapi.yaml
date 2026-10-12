@@ -1202,6 +1202,146 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/projects/{key}/releases/{version}/report.pdf:
+    get:
+      operationId: projects_releases_report.pdf_retrieve
+      description: The signed report as a PDF (FR-RPT-04). Not found until the release
+        is signed off.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: version
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/projects/{key}/releases/{version}/share-links/:
+    get:
+      operationId: projects_releases_share_links_list
+      description: |-
+        GET: the release's share links, for anyone on the project (never their tokens). POST:
+        make one (owners, admins and QA leads); its token is in the answer once and cannot be
+        fetched again.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: version
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShareLink'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareLinkCreated'
+          description: ''
+    post:
+      operationId: projects_releases_share_links_create
+      description: |-
+        GET: the release's share links, for anyone on the project (never their tokens). POST:
+        make one (owners, admins and QA leads); its token is in the answer once and cannot be
+        fetched again.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: version
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShareLinkRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ShareLinkRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ShareLinkRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShareLink'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareLinkCreated'
+          description: ''
+  /api/projects/{key}/releases/{version}/share-links/{link_id}/:
+    delete:
+      operationId: projects_releases_share_links_destroy
+      description: Revoke a share link. It stops working at once.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: link_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: version
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/projects/{key}/releases/{version}/sign-off/:
     post:
       operationId: projects_releases_sign_off_create
@@ -1494,6 +1634,48 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/shared/{token}/:
+    get:
+      operationId: shared_retrieve
+      description: |-
+        What a share link shows: the signed report and its sign-off, as they were signed.
+        Never live data. Unknown, expired and revoked links are all simply not found.
+      parameters:
+      - in: path
+        name: token
+        schema:
+          type: string
+        required: true
+      tags:
+      - shared
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharedReport'
+          description: ''
+  /api/shared/{token}/report.pdf:
+    get:
+      operationId: shared_report.pdf_retrieve
+      description: The signed report as a PDF, through a share link. Each download
+        is audited.
+      parameters:
+      - in: path
+        name: token
+        schema:
+          type: string
+        required: true
+      tags:
+      - shared
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          description: ''
 components:
   schemas:
     AcceptInvite:
@@ -3049,6 +3231,94 @@ components:
         * `high` - High
         * `medium` - Medium
         * `low` - Low
+    ShareLink:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        state:
+          $ref: '#/components/schemas/State4b9Enum'
+        created_by:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+      required:
+      - created_at
+      - created_by
+      - expires_at
+      - id
+      - state
+    ShareLinkCreated:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        state:
+          $ref: '#/components/schemas/State4b9Enum'
+        created_by:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        token:
+          type: string
+          description: Shown once. Only its hash is stored.
+      required:
+      - created_at
+      - created_by
+      - expires_at
+      - id
+      - state
+      - token
+    ShareLinkRequest:
+      type: object
+      properties:
+        days:
+          type: integer
+          maximum: 365
+          minimum: 1
+    SharedReport:
+      type: object
+      properties:
+        organisation:
+          type: string
+        project:
+          type: string
+        version:
+          type: string
+        report:
+          $ref: '#/components/schemas/Report'
+        sign_off:
+          $ref: '#/components/schemas/SignOff'
+        blockers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Blocker'
+        coverage:
+          $ref: '#/components/schemas/Coverage'
+        expires_at:
+          type: string
+          format: date-time
+      required:
+      - blockers
+      - coverage
+      - expires_at
+      - organisation
+      - project
+      - report
+      - sign_off
+      - version
     SignOff:
       type: object
       properties:
@@ -3086,6 +3356,16 @@ components:
       required:
       - reason
       - until
+    State4b9Enum:
+      enum:
+      - active
+      - expired
+      - revoked
+      type: string
+      description: |-
+        * `active` - active
+        * `expired` - expired
+        * `revoked` - revoked
     StatusChange:
       type: object
       properties:

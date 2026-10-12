@@ -208,6 +208,45 @@
   font-size: 14px;
 }
 
+.signed-actions {
+  display: grid;
+  gap: 14px;
+}
+.share-new {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-left: 2px solid var(--ink);
+  background: var(--paper);
+}
+.share-new .field-label {
+  font-weight: 400;
+}
+.share-address {
+  display: flex;
+  gap: 8px;
+}
+.share-address .input {
+  min-height: 30px;
+  padding: 4px 8px;
+  font-size: 12.5px;
+}
+.share-list {
+  padding: 0;
+  list-style: none;
+  border-top: var(--hairline);
+  font-size: 13.5px;
+}
+.share-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  padding: 4px 0;
+  border-bottom: var(--hairline);
+}
+
 @media (max-width: 1024px) {
   .release-layout {
     grid-template-columns: 1fr;

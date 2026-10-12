@@ -15,6 +15,7 @@ import { NotFound } from '../NotFound'
 import { CoverageBlock, Linkified } from '../projects/ProjectHome'
 import { ProjectNav } from '../projects/ProjectNav'
 import { ReadinessChip } from './ReadinessChip'
+import { SignedActions } from './SignedActions'
 import './release.css'
 
 // Release readiness and sign-off (UX Flow 3, wireframe §8, M8-09). Blockers on the left
@@ -255,14 +256,7 @@ function SignOffBox({ release, checking, failed }: { release?: ReleaseDetail; ch
             {s.reason}
           </p>
         ) : null}
-        <div className="sign-actions">
-          <Button disabled title="Arrives with M8-07">
-            Download PDF
-          </Button>
-          <Button disabled title="Arrives with M8-08">
-            Copy share link
-          </Button>
-        </div>
+        <SignedActions projectKey={release.project_key} version={release.version} canShare={canSign} />
       </div>
     )
   }

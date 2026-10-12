@@ -49,3 +49,14 @@ class SignOff(TenantModel):
                 name="sign_off_reason_when_not_ready",
             )
         ]
+
+
+class ShareLink(TenantModel):
+    """A read-only link to a signed report (FR-RPT-04, SEC §4, spec gap G-02). Only a hash of
+    the token is stored, so the link cannot be rebuilt from the database. It can be revoked
+    and it expires."""
+
+    report = models.ForeignKey(Report, on_delete=models.PROTECT, related_name="share_links")
+    token_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+    revoked_at = models.DateTimeField(null=True, blank=True)

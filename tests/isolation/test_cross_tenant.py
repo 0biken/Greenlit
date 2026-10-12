@@ -203,6 +203,8 @@ def test_no_alpha_response_contains_any_of_bravos_data(world):
                         "version": "1.0",
                         "defect_id": str(world.alpha_spine["defect"].pk),
                         "run_id": str(world.alpha_spine["run"].pk),
+                        "token": world.alpha_spine["share_token"],
+                        "link_id": str(world.alpha_spine["share_link"].pk),
                         "result_id": str(world.alpha_spine["result"].pk),
                         "item_id": f"requirement.{world.alpha_spine['requirement'].pk}",
                     },
@@ -223,6 +225,10 @@ def test_bravos_identifiers_are_not_found_under_alpha(world):
         for route, view_cls in api_endpoints():
             if "<" not in route or "get" not in methods_of(view_cls):
                 continue
+            if declared(view_cls) == "token":
+                # A share link is meant to be read by whoever holds its token, in any
+                # organisation or none. Its own rules are tested in apps/reports/tests.
+                continue
             response = client.get(
                 url_for(
                     route,
@@ -233,6 +239,8 @@ def test_bravos_identifiers_are_not_found_under_alpha(world):
                         "version": "1.0",
                         "defect_id": str(world.bravo_spine["defect"].pk),
                         "run_id": str(world.bravo_spine["run"].pk),
+                        "token": world.bravo_spine["share_token"],
+                        "link_id": str(world.bravo_spine["share_link"].pk),
                         "result_id": str(world.bravo_spine["result"].pk),
                         "item_id": f"requirement.{world.bravo_spine['requirement'].pk}",
                     },

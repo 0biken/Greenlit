@@ -41,3 +41,7 @@ export type RunCase = Omit<S['RunCase'], 'defects'> & {
   defects: (Omit<S['RunDefect'], 'chip'> & { chip: Status })[]
 }
 export type RunDetail = Omit<S['RunDetail'], 'cases'> & { cases: RunCase[] }
+
+export type ShareLink = S['ShareLink']
+export type ShareLinkCreated = S['ShareLinkCreated']
+export type SharedReport = S['SharedReport']

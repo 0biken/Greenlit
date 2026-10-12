@@ -608,6 +608,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{key}/releases/{version}/report.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The signed report as a PDF (FR-RPT-04). Not found until the release is signed off. */
+        get: operations["projects_releases_report.pdf_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/releases/{version}/share-links/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET: the release's share links, for anyone on the project (never their tokens). POST:
+         *     make one (owners, admins and QA leads); its token is in the answer once and cannot be
+         *     fetched again.
+         */
+        get: operations["projects_releases_share_links_list"];
+        put?: never;
+        /**
+         * @description GET: the release's share links, for anyone on the project (never their tokens). POST:
+         *     make one (owners, admins and QA leads); its token is in the answer once and cannot be
+         *     fetched again.
+         */
+        post: operations["projects_releases_share_links_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/releases/{version}/share-links/{link_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description Revoke a share link. It stops working at once. */
+        delete: operations["projects_releases_share_links_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/{key}/releases/{version}/sign-off/": {
         parameters: {
             query?: never;
@@ -751,6 +811,43 @@ export interface paths {
         put?: never;
         /** @description Sign out everywhere: end every session of this user, this one included (SEC §3). */
         post: operations["sessions_end_all_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shared/{token}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description What a share link shows: the signed report and its sign-off, as they were signed.
+         *     Never live data. Unknown, expired and revoked links are all simply not found.
+         */
+        get: operations["shared_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shared/{token}/report.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The signed report as a PDF, through a share link. Each download is audited. */
+        get: operations["shared_report.pdf_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1384,6 +1481,42 @@ export interface components {
          * @enum {string}
          */
         SeverityEnum: "critical" | "high" | "medium" | "low";
+        ShareLink: {
+            /** Format: uuid */
+            id: string;
+            state: components["schemas"]["State4b9Enum"];
+            created_by: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        ShareLinkCreated: {
+            /** Format: uuid */
+            id: string;
+            state: components["schemas"]["State4b9Enum"];
+            created_by: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            expires_at: string;
+            /** @description Shown once. Only its hash is stored. */
+            token: string;
+        };
+        ShareLinkRequest: {
+            days?: number;
+        };
+        SharedReport: {
+            organisation: string;
+            project: string;
+            version: string;
+            report: components["schemas"]["Report"];
+            sign_off: components["schemas"]["SignOff"];
+            blockers: components["schemas"]["Blocker"][];
+            coverage: components["schemas"]["Coverage"];
+            /** Format: date-time */
+            expires_at: string;
+        };
         SignOff: {
             by: string;
             /** Format: date-time */
@@ -1399,6 +1532,13 @@ export interface components {
             /** Format: date-time */
             until: string;
         };
+        /**
+         * @description * `active` - active
+         *     * `expired` - expired
+         *     * `revoked` - revoked
+         * @enum {string}
+         */
+        State4b9Enum: "active" | "expired" | "revoked";
         StatusChange: {
             status: components["schemas"]["TrackerStatusEnum"];
         };
@@ -2549,6 +2689,116 @@ export interface operations {
             };
         };
     };
+    "projects_releases_report.pdf_retrieve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+        };
+    };
+    projects_releases_share_links_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareLink"][];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareLinkCreated"];
+                };
+            };
+        };
+    };
+    projects_releases_share_links_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ShareLinkRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ShareLinkRequest"];
+                "multipart/form-data": components["schemas"]["ShareLinkRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareLink"][];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareLinkCreated"];
+                };
+            };
+        };
+    };
+    projects_releases_share_links_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                link_id: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     projects_releases_sign_off_create: {
         parameters: {
             query?: never;
@@ -2779,6 +3029,48 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    shared_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedReport"];
+                };
+            };
+        };
+    };
+    "shared_report.pdf_retrieve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
             };
         };
     };

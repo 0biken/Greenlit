@@ -89,6 +89,23 @@ urlpatterns = [
         name="release-detail",
     ),
     path(
+        "api/projects/<str:key>/releases/<str:version>/report.pdf",
+        report_views.report_pdf,
+        name="release-report-pdf",
+    ),
+    path(
+        "api/projects/<str:key>/releases/<str:version>/share-links/",
+        report_views.share_links,
+        name="release-share-links",
+    ),
+    path(
+        "api/projects/<str:key>/releases/<str:version>/share-links/<uuid:link_id>/",
+        report_views.share_link_detail,
+        name="release-share-link",
+    ),
+    path("api/shared/<str:token>/", report_views.shared_report, name="shared-report"),
+    path("api/shared/<str:token>/report.pdf", report_views.shared_report_pdf, name="shared-pdf"),
+    path(
         "api/projects/<str:key>/releases/<str:version>/sign-off/",
         report_views.sign_off,
         name="release-sign-off",

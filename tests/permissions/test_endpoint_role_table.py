@@ -31,6 +31,8 @@ from apps.core.policy import can
 from apps.core.tenancy import org_scope
 from apps.defects.status import create_defect, set_tracker_status
 from apps.plans import services as plans
+from apps.reports.services import sign_off
+from apps.reports.sharing import create_link
 from apps.requirements.services import create_requirement
 from apps.runs.models import CaseResult
 from apps.runs.services import create_release, start_run
@@ -85,6 +87,11 @@ SAMPLES = {
         "release": ctx["open_release"],
     },
     ("api/projects/<str:key>/runs/<str:run_id>/complete/", "post"): lambda ctx: {},
+    ("api/projects/<str:key>/releases/<str:version>/share-links/", "post"): lambda ctx: {},
+    (
+        "api/projects/<str:key>/releases/<str:version>/share-links/<uuid:link_id>/",
+        "delete",
+    ): lambda ctx: {},
     ("api/projects/<str:key>/runs/<str:run_id>/results/<uuid:result_id>/", "put"): lambda ctx: {
         "outcome": "passed"
     },
@@ -134,7 +141,8 @@ def call(client: Client, route: str, method: str, org_slug: str | None, ctx: dic
     kwargs = {"headers": {"X-Org": org_slug}} if org_slug else {}
     body = body_for(route, method, ctx)
     # A parameter given as a function makes a fresh target for each call.
-    params = {k: v() if callable(v) else v for k, v in ctx["params"].items()}
+    params = {**ctx["params"], **ctx.get("route_params", {}).get(route, {})}
+    params = {k: v() if callable(v) else v for k, v in params.items()}
     if body is not None:
         kwargs.update(data=body, content_type="application/json")
     return getattr(client, method)(url_for(route, params), **kwargs)
@@ -168,6 +176,9 @@ def _org_with_a_member_of_each_role():
         open_release = create_release(project, None, name="7.0")
         run = start_run(open_release, version, None)
         result = CaseResult.objects.get(run=run)
+        # A signed-off release, so its PDF and share links are valid requests.
+        signed = create_release(project, None, name="6.0")
+        sign_off(signed, Membership.objects.get(user=users[Role.OWNER.value]), None)
         fixer = User.objects.create_user("fixer@table.example", "x" * 14)
         Membership.objects.create(
             org_id=org.id, user=fixer, role=Role.DEVELOPER, status=MembershipStatus.ACTIVE
@@ -208,7 +219,19 @@ def _org_with_a_member_of_each_role():
             )
         return str(invitation.id)
 
+    def fresh_link() -> str:
+        with org_scope(org.id):
+            return str(create_link(signed, None)[0].pk)
+
+    signed_release = {"version": "6.0", "link_id": fresh_link}
     ctx = {
+        "route_params": {
+            "api/projects/<str:key>/releases/<str:version>/report.pdf": signed_release,
+            "api/projects/<str:key>/releases/<str:version>/share-links/": signed_release,
+            "api/projects/<str:key>/releases/<str:version>/share-links/<uuid:link_id>/": (
+                signed_release
+            ),
+        },
         "fresh_member": fresh_member,
         "file_id": str(upload.id),
         "plan_no": plan.display_no,
@@ -281,5 +304,8 @@ def test_anonymous_callers_only_reach_public_endpoints(route, view_cls):
     response = Client().get(url_for(route))
     if declared(view_cls) == "public":
         assert response.status_code == 200
+    elif declared(view_cls) == "token":
+        # A share-link route asks for no sign-in; without a valid token there is nothing there.
+        assert response.status_code == 404
     else:
         assert response.status_code in (401, 403), f"{route} answered {response.status_code}"

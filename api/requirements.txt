@@ -49,9 +49,10 @@ mypy_extensions==1.1.0
 packageurl-python==0.17.6
 packaging==26.3
 pathspec==1.1.1
-pip-requirements-parser==32.0.1
+pillow==12.3.0
 pip_api==0.0.35
 pip_audit==2.10.1
+pip-requirements-parser==32.0.1
 platformdirs==4.12.3
 pluggy==1.6.0
 prompt_toolkit==3.0.53
@@ -68,6 +69,7 @@ python-dateutil==2.9.0.post0
 PyYAML==6.0.3
 redis==8.1.0
 referencing==0.37.0
+reportlab==5.0.1
 requests==2.34.2
 rich==15.0.0
 rpds-py==2026.6.3

@@ -133,5 +133,14 @@ class Public(BasePermission):
         return True
 
 
+class TokenAccess(BasePermission):
+    """Marks an endpoint whose only credential is an unguessable token in its URL (a share
+    link). Anyone holding the token gets in, signed in or not; the view itself answers "not
+    found" for a token that is unknown, expired or revoked."""
+
+    def has_permission(self, request, view) -> bool:
+        return True
+
+
 class AuthenticatedOnly(IsAuthenticated):
     """Marks an endpoint that needs a signed-in user but no organisation, such as `/api/me/`."""

@@ -14,6 +14,7 @@ import { ReleasesList } from '../features/releases/ReleasesList'
 import { RunPage } from '../features/runs/RunPage'
 import { RunsList } from '../features/runs/RunsList'
 import { SettingsPage } from '../features/settings/SettingsPage'
+import { SharedReportPage } from '../features/shared/SharedReportPage'
 import { AppShell } from './AppShell'
 import { Gate, SignedInOnly } from './Gate'
 
@@ -25,6 +26,8 @@ function RouteError() {
 
 // URLs use display IDs and project keys: /hube, /hube/releases/2.4.1 (DATA §4).
 export const router = createBrowserRouter([
+  // A share link: no sign-in, the token in the address is the credential.
+  { path: '/shared/:token', element: <SharedReportPage /> },
   { path: '/sign-in', element: <SignIn /> },
   { path: '/sign-up', element: <SignUp /> },
   { path: '/two-step', element: <TwoStep /> },
