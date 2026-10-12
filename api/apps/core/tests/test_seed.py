@@ -119,3 +119,18 @@ def test_the_seed_leaves_a_plan_with_history_and_a_draft_awaiting_approval():
         diff = diff_versions(versions["1.0"], versions["1.1"])
         assert (len(diff["added"]), len(diff["removed"]), len(diff["changed"])) == (1, 0, 1)
         assert "moved" in {step["op"] for step in diff["changed"][0]["steps"]}
+
+
+def test_the_seed_leaves_drafted_requirements_waiting_for_review(
+    django_capture_on_commit_callbacks,
+):
+    from apps.requirements.models import Requirement
+    from apps.sources.models import SourceDocument
+
+    with django_capture_on_commit_callbacks(execute=True):  # the drafting job runs on commit
+        seed()
+    with org_scope(karma_id()):
+        document = SourceDocument.objects.get(title="Scheduled transfers PRD")
+        drafts = Requirement.objects.filter(source_document=document)
+        assert document.state == "ready" and drafts.count() == 5
+        assert set(drafts.values_list("review_state", "origin")) == {("draft", "ai")}

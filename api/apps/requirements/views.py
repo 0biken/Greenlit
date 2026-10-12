@@ -59,8 +59,15 @@ class RequirementActionsSerializer(serializers.Serializer):
     edit = serializers.BooleanField()
 
 
+class RequirementSourceSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    title = serializers.CharField()
+    page = serializers.IntegerField(allow_null=True)
+
+
 class RequirementDetailSerializer(RequirementRowSerializer):
     text = serializers.CharField()
+    stated_in = RequirementSourceSerializer(allow_null=True)
     created_by = serializers.CharField(allow_null=True)
     created_at = serializers.DateTimeField()
     linked_cases = LinkedCaseSerializer(many=True)
@@ -85,7 +92,9 @@ class RequirementWriteSerializer(RequirementEditSerializer):
 
 def requirement_or_404(project: Project, ident: str) -> Requirement:
     """The requirement by its uuid, number or REQ-n (DATA §4 rule 5)."""
-    rows = Requirement.objects.filter(project=project).select_related("project", "created_by")
+    rows = Requirement.objects.filter(project=project).select_related(
+        "project", "created_by", "source_document"
+    )
     try:
         return rows.get(pk=UUID(ident))
     except (ValueError, Requirement.DoesNotExist):
@@ -113,6 +122,9 @@ def _detail(request, requirement: Requirement) -> Response:
         OpenApiParameter("q", str, description="Part of the title or text, or a REQ number"),
         OpenApiParameter("priority", str, enum=Priority.values),
         OpenApiParameter("coverage", str, enum=["covered", "uncovered"]),
+        OpenApiParameter(
+            "state", str, enum=ReviewState.values, description="Default: not rejected"
+        ),
     ],
     request=RequirementWriteSerializer,
     responses={200: RequirementRowSerializer(many=True), 201: RequirementDetailSerializer},
@@ -131,6 +143,7 @@ def requirements(request, key: str):
             q=params.get("q", ""),
             priority=params.get("priority", ""),
             coverage=params.get("coverage", ""),
+            state=params.get("state", ""),
         )
         return Response(RequirementRowSerializer(rows, many=True).data)
     body = RequirementWriteSerializer(data=request.data)

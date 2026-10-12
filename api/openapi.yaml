@@ -1868,6 +1868,15 @@ paths:
         schema:
           type: string
         description: Part of the title or text, or a REQ number
+      - in: query
+        name: state
+        schema:
+          type: string
+          enum:
+          - accepted
+          - draft
+          - rejected
+        description: 'Default: not rejected'
       tags:
       - projects
       security:
@@ -1918,6 +1927,15 @@ paths:
         schema:
           type: string
         description: Part of the title or text, or a REQ number
+      - in: query
+        name: state
+        schema:
+          type: string
+          enum:
+          - accepted
+          - draft
+          - rejected
+        description: 'Default: not rejected'
       tags:
       - projects
       requestBody:
@@ -2015,6 +2033,42 @@ paths:
               schema:
                 $ref: '#/components/schemas/RequirementDetail'
           description: ''
+  /api/projects/{key}/requirements/{requirement_id}/review/:
+    post:
+      operationId: projects_requirements_review_create
+      description: |-
+        Accept or reject a drafted requirement (FR-PLAN-04). Only accepted requirements count
+        towards coverage, readiness and reports.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: requirement_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Review'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Review'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Review'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/projects/{key}/runs/:
     get:
       operationId: projects_runs_list
@@ -2235,6 +2289,175 @@ paths:
                 items:
                   $ref: '#/components/schemas/RunEvidence'
           description: ''
+  /api/projects/{key}/sources/:
+    get:
+      operationId: projects_sources_list
+      description: |-
+        GET: the project's source documents. POST: add a PRD, either a file already uploaded
+        with kind `prd` (`file_id`) or pasted `text` (FR-PLAN-01).
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SourceRow'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceDetail'
+          description: ''
+    post:
+      operationId: projects_sources_create
+      description: |-
+        GET: the project's source documents. POST: add a PRD, either a file already uploaded
+        with kind `prd` (`file_id`) or pasted `text` (FR-PLAN-01).
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SourceCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SourceCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SourceCreate'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SourceRow'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceDetail'
+          description: ''
+  /api/projects/{key}/sources/{source_id}/:
+    get:
+      operationId: projects_sources_retrieve
+      description: |-
+        One source: its text by page, the requirements drafted from it with where each is stated,
+        the questions the AI could not answer, and the progress of any job still running.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: source_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceDetail'
+          description: ''
+  /api/projects/{key}/sources/{source_id}/accept/:
+    post:
+      operationId: projects_sources_accept_create
+      description: Accept up to 20 of this source's drafts at once (AI §6).
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: source_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptMany'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AcceptMany'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AcceptMany'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceDetail'
+          description: ''
+  /api/projects/{key}/sources/{source_id}/draft/:
+    post:
+      operationId: projects_sources_draft_create
+      description: |-
+        Draft requirements from this source again. Passages that already have a draft are
+        skipped, and unchanged text costs nothing.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: source_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceDetail'
+          description: ''
   /api/projects/{key}/summary/:
     get:
       operationId: projects_summary_retrieve
@@ -2321,6 +2544,21 @@ components:
           maxLength: 200
       required:
       - token
+    AcceptMany:
+      type: object
+      properties:
+        numbers:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+          maxItems: 20
+          minItems: 1
+        viewed_ms:
+          type: integer
+          minimum: 0
+      required:
+      - numbers
     Activity:
       type: object
       properties:
@@ -2358,6 +2596,9 @@ components:
           minItems: 1
       required:
       - file_ids
+    BlankEnum:
+      enum:
+      - ''
     Blocker:
       type: object
       properties:
@@ -2617,7 +2858,18 @@ components:
       - by
       - decision
       - reason
-    DecisionEnum:
+    DecisionRequest:
+      type: object
+      properties:
+        decision:
+          $ref: '#/components/schemas/DecisionRequestDecisionEnum'
+        reason:
+          type: string
+          maxLength: 2000
+      required:
+      - decision
+      - reason
+    DecisionRequestDecisionEnum:
       enum:
       - wont_fix
       - deferred
@@ -2625,17 +2877,6 @@ components:
       description: |-
         * `wont_fix` - wont_fix
         * `deferred` - deferred
-    DecisionRequest:
-      type: object
-      properties:
-        decision:
-          $ref: '#/components/schemas/DecisionEnum'
-        reason:
-          type: string
-          maxLength: 2000
-      required:
-      - decision
-      - reason
     DefectActions:
       type: object
       properties:
@@ -3241,6 +3482,16 @@ components:
       - progress
       - started_at
       - state
+    Kind452Enum:
+      enum:
+      - prd
+      - screenshot_set
+      - qa_report
+      type: string
+      description: |-
+        * `prd` - Prd
+        * `screenshot_set` - Screenshot Set
+        * `qa_report` - Qa Report
     LinkedCase:
       type: object
       properties:
@@ -3871,6 +4122,18 @@ components:
       description: |-
         * `ready` - ready
         * `not_ready` - not_ready
+    ReasonEnum:
+      enum:
+      - wrong
+      - duplicate
+      - too_vague
+      - not_testable
+      type: string
+      description: |-
+        * `wrong` - Wrong
+        * `duplicate` - Duplicate
+        * `too_vague` - Too Vague
+        * `not_testable` - Not Testable
     ReleaseBrief:
       type: object
       properties:
@@ -4058,6 +4321,10 @@ components:
           format: date-time
         text:
           type: string
+        stated_in:
+          allOf:
+          - $ref: '#/components/schemas/RequirementSource'
+          nullable: true
         created_by:
           type: string
           nullable: true
@@ -4095,6 +4362,7 @@ components:
       - revision
       - revisions
       - stale_cases
+      - stated_in
       - text
       - title
       - updated_at
@@ -4164,6 +4432,21 @@ components:
       - stale_cases
       - title
       - updated_at
+    RequirementSource:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        page:
+          type: integer
+          nullable: true
+      required:
+      - id
+      - page
+      - title
     RequirementText:
       type: object
       properties:
@@ -4298,6 +4581,30 @@ components:
       - evidence
       - id
       - outcome
+    Review:
+      type: object
+      properties:
+        decision:
+          $ref: '#/components/schemas/ReviewDecisionEnum'
+        reason:
+          default: ''
+          oneOf:
+          - $ref: '#/components/schemas/ReasonEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        viewed_ms:
+          type: integer
+          minimum: 0
+          description: How long the draft was on screen before deciding
+      required:
+      - decision
+    ReviewDecisionEnum:
+      enum:
+      - accepted
+      - rejected
+      type: string
+      description: |-
+        * `accepted` - accepted
+        * `rejected` - rejected
     ReviewStateEnum:
       enum:
       - draft
@@ -4686,6 +4993,256 @@ components:
       required:
       - reason
       - until
+    SourceActions:
+      type: object
+      properties:
+        review:
+          type: boolean
+      required:
+      - review
+    SourceCreate:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        file_id:
+          type: string
+          format: uuid
+          description: A file uploaded with kind prd
+        text:
+          type: string
+          description: Or the PRD pasted as text
+          maxLength: 600000
+    SourceDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        kind:
+          $ref: '#/components/schemas/Kind452Enum'
+        state:
+          $ref: '#/components/schemas/StateF83Enum'
+        failure:
+          type: string
+        pages:
+          type: integer
+        pasted:
+          type: boolean
+        file_name:
+          type: string
+          nullable: true
+        added_by:
+          type: string
+          nullable: true
+        added_at:
+          type: string
+          format: date-time
+        drafts:
+          type: integer
+        accepted:
+          type: integer
+        rejected:
+          type: integer
+        job:
+          allOf:
+          - $ref: '#/components/schemas/SourceJob'
+          nullable: true
+        text_pages:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourcePage'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceItem'
+        gaps:
+          type: array
+          items:
+            type: string
+        left_out:
+          type: integer
+          description: Drafts dropped because a check failed
+        allowance_message:
+          type: string
+        fast_accepts:
+          type: integer
+          nullable: true
+        actions:
+          $ref: '#/components/schemas/SourceActions'
+      required:
+      - accepted
+      - actions
+      - added_at
+      - added_by
+      - allowance_message
+      - drafts
+      - failure
+      - fast_accepts
+      - file_name
+      - gaps
+      - id
+      - items
+      - job
+      - kind
+      - left_out
+      - pages
+      - pasted
+      - rejected
+      - state
+      - text_pages
+      - title
+    SourceItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: integer
+        display_id:
+          type: string
+        title:
+          type: string
+        text:
+          type: string
+        priority:
+          $ref: '#/components/schemas/SeverityEnum'
+        review_state:
+          $ref: '#/components/schemas/ReviewStateEnum'
+        origin:
+          $ref: '#/components/schemas/OriginEnum'
+        page:
+          type: integer
+          nullable: true
+        start:
+          type: integer
+          nullable: true
+        end:
+          type: integer
+          nullable: true
+        vague:
+          type: boolean
+        possible_duplicate_of:
+          type: string
+          nullable: true
+        assumptions:
+          type: array
+          items:
+            type: string
+      required:
+      - assumptions
+      - display_id
+      - end
+      - id
+      - number
+      - origin
+      - page
+      - possible_duplicate_of
+      - priority
+      - review_state
+      - start
+      - text
+      - title
+      - vague
+    SourceJob:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+        state:
+          type: string
+        running:
+          type: boolean
+        progress:
+          type: string
+        done:
+          type: integer
+        total:
+          type: integer
+        error:
+          type: string
+      required:
+      - done
+      - error
+      - id
+      - kind
+      - progress
+      - running
+      - state
+      - total
+    SourcePage:
+      type: object
+      properties:
+        page:
+          type: integer
+        start:
+          type: integer
+          description: Where this page starts in the whole text
+        text:
+          type: string
+      required:
+      - page
+      - start
+      - text
+    SourceRow:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        kind:
+          $ref: '#/components/schemas/Kind452Enum'
+        state:
+          $ref: '#/components/schemas/StateF83Enum'
+        failure:
+          type: string
+        pages:
+          type: integer
+        pasted:
+          type: boolean
+        file_name:
+          type: string
+          nullable: true
+        added_by:
+          type: string
+          nullable: true
+        added_at:
+          type: string
+          format: date-time
+        drafts:
+          type: integer
+        accepted:
+          type: integer
+        rejected:
+          type: integer
+        job:
+          allOf:
+          - $ref: '#/components/schemas/SourceJob'
+          nullable: true
+      required:
+      - accepted
+      - added_at
+      - added_by
+      - drafts
+      - failure
+      - file_name
+      - id
+      - job
+      - kind
+      - pages
+      - pasted
+      - rejected
+      - state
+      - title
     State4b9Enum:
       enum:
       - active
@@ -4706,6 +5263,18 @@ components:
         * `draft` - Draft
         * `published` - Published
         * `superseded` - Superseded
+    StateF83Enum:
+      enum:
+      - waiting
+      - parsing
+      - ready
+      - failed
+      type: string
+      description: |-
+        * `waiting` - Waiting
+        * `parsing` - Parsing
+        * `ready` - Ready
+        * `failed` - Failed
     StatusChange:
       type: object
       properties:

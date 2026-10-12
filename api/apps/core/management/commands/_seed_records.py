@@ -355,6 +355,7 @@ def seed_kola(project: Project, lead, tester, dev) -> str | None:
     first = CaseResult.objects.filter(run=in_progress).order_by("created_at").first()
     runs.record_result(first, tester, "passed")
     _seed_plan_history(project, lead, tester)
+    _seed_source(project, tester)
     return token
 
 
@@ -423,3 +424,25 @@ def seed_small(project: Project, lead) -> bool:
     release = runs.create_release(project, lead, name="1.0")
     _run(release, version, lead, ["passed"], "1.0.0")
     return True
+
+
+SAMPLE_PRD = """# Scheduled transfers
+
+A customer can schedule a transfer for a future date.
+A scheduled transfer must be cancellable until midnight before it runs.
+The scheduling screen should feel fast on older phones.
+
+# Limits
+
+A single transfer cannot be more than the account's daily limit.
+A customer will see the remaining daily limit before confirming a transfer.
+"""
+
+
+def _seed_source(project: Project, tester) -> None:
+    """A pasted PRD, so the Sources and draft review screens have something to show (M2-01,
+    M2-06, M2-07). Its requirements are drafted by the job this queues, which runs when the
+    seed's transaction commits (inline locally, on a worker elsewhere)."""
+    from apps.sources import services as sources
+
+    sources.create_from_text(project, tester, title="Scheduled transfers PRD", text=SAMPLE_PRD)

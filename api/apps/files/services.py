@@ -24,6 +24,10 @@ from apps.files.types import KINDS, TYPES, identify, type_for_name, unsupported_
 
 COUNTED_STATES = (FileState.PENDING, FileState.SCANNING, FileState.AVAILABLE)
 
+# Called with the file once it has passed its checks, inside the scan job. Other apps add what
+# should happen next for their kind of file (a PRD is parsed), so files need not know them.
+WHEN_AVAILABLE: list = []
+
 
 def request_upload(
     membership: Membership, project: Project, kind: str, name: str, size: int
@@ -130,6 +134,9 @@ def scan_file(job, file_id: str) -> None:
         updated_at=timezone.now(),
     )
     job.set_progress(3, 3, "Ready")
+    stored.refresh_from_db()
+    for hook in WHEN_AVAILABLE:
+        hook(stored)
 
 
 def download_url(stored: StoredFile) -> str:

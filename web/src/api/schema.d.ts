@@ -924,6 +924,26 @@ export interface paths {
         patch: operations["projects_requirements_partial_update"];
         trace?: never;
     };
+    "/api/projects/{key}/requirements/{requirement_id}/review/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Accept or reject a drafted requirement (FR-PLAN-04). Only accepted requirements count
+         *     towards coverage, readiness and reports.
+         */
+        post: operations["projects_requirements_review_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/{key}/runs/": {
         parameters: {
             query?: never;
@@ -1022,6 +1042,87 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{key}/sources/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET: the project's source documents. POST: add a PRD, either a file already uploaded
+         *     with kind `prd` (`file_id`) or pasted `text` (FR-PLAN-01).
+         */
+        get: operations["projects_sources_list"];
+        put?: never;
+        /**
+         * @description GET: the project's source documents. POST: add a PRD, either a file already uploaded
+         *     with kind `prd` (`file_id`) or pasted `text` (FR-PLAN-01).
+         */
+        post: operations["projects_sources_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/sources/{source_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description One source: its text by page, the requirements drafted from it with where each is stated,
+         *     the questions the AI could not answer, and the progress of any job still running.
+         */
+        get: operations["projects_sources_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/sources/{source_id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Accept up to 20 of this source's drafts at once (AI §6). */
+        post: operations["projects_sources_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/sources/{source_id}/draft/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Draft requirements from this source again. Passages that already have a draft are
+         *     skipped, and unchanged text costs nothing.
+         */
+        post: operations["projects_sources_draft_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/{key}/summary/": {
         parameters: {
             query?: never;
@@ -1100,6 +1201,10 @@ export interface components {
         AcceptInvite: {
             token: string;
         };
+        AcceptMany: {
+            numbers: number[];
+            viewed_ms?: number;
+        };
         Activity: {
             /** Format: date-time */
             at: string;
@@ -1114,6 +1219,8 @@ export interface components {
         AttachEvidence: {
             file_ids: string[];
         };
+        /** @enum {unknown} */
+        BlankEnum: "";
         Blocker: {
             type: components["schemas"]["TypeEnum"];
             display_id: string;
@@ -1206,16 +1313,16 @@ export interface components {
             reason: string;
             by: string | null;
         };
+        DecisionRequest: {
+            decision: components["schemas"]["DecisionRequestDecisionEnum"];
+            reason: string;
+        };
         /**
          * @description * `wont_fix` - wont_fix
          *     * `deferred` - deferred
          * @enum {string}
          */
-        DecisionEnum: "wont_fix" | "deferred";
-        DecisionRequest: {
-            decision: components["schemas"]["DecisionEnum"];
-            reason: string;
-        };
+        DecisionRequestDecisionEnum: "wont_fix" | "deferred";
         DefectActions: {
             edit: boolean;
             set_status: components["schemas"]["TrackerStatusEnum"][];
@@ -1445,6 +1552,13 @@ export interface components {
             /** Format: date-time */
             finished_at: string | null;
         };
+        /**
+         * @description * `prd` - Prd
+         *     * `screenshot_set` - Screenshot Set
+         *     * `qa_report` - Qa Report
+         * @enum {string}
+         */
+        Kind452Enum: "prd" | "screenshot_set" | "qa_report";
         LinkedCase: {
             display_id: string;
             number: number;
@@ -1702,6 +1816,14 @@ export interface components {
          * @enum {string}
          */
         ReadinessEnum: "ready" | "not_ready";
+        /**
+         * @description * `wrong` - Wrong
+         *     * `duplicate` - Duplicate
+         *     * `too_vague` - Too Vague
+         *     * `not_testable` - Not Testable
+         * @enum {string}
+         */
+        ReasonEnum: "wrong" | "duplicate" | "too_vague" | "not_testable";
         ReleaseBrief: {
             version: string;
             name: string;
@@ -1780,6 +1902,7 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
             text: string;
+            stated_in: components["schemas"]["RequirementSource"] | null;
             created_by: string | null;
             /** Format: date-time */
             created_at: string;
@@ -1813,6 +1936,12 @@ export interface components {
             stale_cases: number;
             /** Format: date-time */
             updated_at: string;
+        };
+        RequirementSource: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            page: number | null;
         };
         RequirementText: {
             revision: number;
@@ -1872,6 +2001,19 @@ export interface components {
             environment: string;
             evidence: components["schemas"]["Evidence"][];
         };
+        Review: {
+            decision: components["schemas"]["ReviewDecisionEnum"];
+            /** @default  */
+            reason: components["schemas"]["ReasonEnum"] | components["schemas"]["BlankEnum"];
+            /** @description How long the draft was on screen before deciding */
+            viewed_ms?: number;
+        };
+        /**
+         * @description * `accepted` - accepted
+         *     * `rejected` - rejected
+         * @enum {string}
+         */
+        ReviewDecisionEnum: "accepted" | "rejected";
         /**
          * @description * `draft` - Draft
          *     * `accepted` - Accepted
@@ -2031,6 +2173,97 @@ export interface components {
             /** Format: date-time */
             until: string;
         };
+        SourceActions: {
+            review: boolean;
+        };
+        SourceCreate: {
+            title?: string;
+            /**
+             * Format: uuid
+             * @description A file uploaded with kind prd
+             */
+            file_id?: string;
+            /** @description Or the PRD pasted as text */
+            text?: string;
+        };
+        SourceDetail: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            kind: components["schemas"]["Kind452Enum"];
+            state: components["schemas"]["StateF83Enum"];
+            failure: string;
+            pages: number;
+            pasted: boolean;
+            file_name: string | null;
+            added_by: string | null;
+            /** Format: date-time */
+            added_at: string;
+            drafts: number;
+            accepted: number;
+            rejected: number;
+            job: components["schemas"]["SourceJob"] | null;
+            text_pages: components["schemas"]["SourcePage"][];
+            items: components["schemas"]["SourceItem"][];
+            gaps: string[];
+            /** @description Drafts dropped because a check failed */
+            left_out: number;
+            allowance_message: string;
+            fast_accepts: number | null;
+            actions: components["schemas"]["SourceActions"];
+        };
+        SourceItem: {
+            /** Format: uuid */
+            id: string;
+            number: number;
+            display_id: string;
+            title: string;
+            text: string;
+            priority: components["schemas"]["SeverityEnum"];
+            review_state: components["schemas"]["ReviewStateEnum"];
+            origin: components["schemas"]["OriginEnum"];
+            page: number | null;
+            start: number | null;
+            end: number | null;
+            vague: boolean;
+            possible_duplicate_of: string | null;
+            assumptions: string[];
+        };
+        SourceJob: {
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            state: string;
+            running: boolean;
+            progress: string;
+            done: number;
+            total: number;
+            error: string;
+        };
+        SourcePage: {
+            page: number;
+            /** @description Where this page starts in the whole text */
+            start: number;
+            text: string;
+        };
+        SourceRow: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            kind: components["schemas"]["Kind452Enum"];
+            state: components["schemas"]["StateF83Enum"];
+            failure: string;
+            pages: number;
+            pasted: boolean;
+            file_name: string | null;
+            added_by: string | null;
+            /** Format: date-time */
+            added_at: string;
+            drafts: number;
+            accepted: number;
+            rejected: number;
+            job: components["schemas"]["SourceJob"] | null;
+        };
         /**
          * @description * `active` - active
          *     * `expired` - expired
@@ -2045,6 +2278,14 @@ export interface components {
          * @enum {string}
          */
         StateDd9Enum: "draft" | "published" | "superseded";
+        /**
+         * @description * `waiting` - Waiting
+         *     * `parsing` - Parsing
+         *     * `ready` - Ready
+         *     * `failed` - Failed
+         * @enum {string}
+         */
+        StateF83Enum: "waiting" | "parsing" | "ready" | "failed";
         StatusChange: {
             status: components["schemas"]["TrackerStatusEnum"];
         };
@@ -3696,6 +3937,8 @@ export interface operations {
                 priority?: "critical" | "high" | "low" | "medium";
                 /** @description Part of the title or text, or a REQ number */
                 q?: string;
+                /** @description Default: not rejected */
+                state?: "accepted" | "draft" | "rejected";
             };
             header?: never;
             path: {
@@ -3730,6 +3973,8 @@ export interface operations {
                 priority?: "critical" | "high" | "low" | "medium";
                 /** @description Part of the title or text, or a REQ number */
                 q?: string;
+                /** @description Default: not rejected */
+                state?: "accepted" | "draft" | "rejected";
             };
             header?: never;
             path: {
@@ -3810,6 +4055,33 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RequirementDetail"];
                 };
+            };
+        };
+    };
+    projects_requirements_review_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                requirement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Review"];
+                "application/x-www-form-urlencoded": components["schemas"]["Review"];
+                "multipart/form-data": components["schemas"]["Review"];
+            };
+        };
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -3975,6 +4247,142 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunEvidence"][];
+                };
+            };
+        };
+    };
+    projects_sources_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceRow"][];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceDetail"];
+                };
+            };
+        };
+    };
+    projects_sources_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SourceCreate"];
+                "application/x-www-form-urlencoded": components["schemas"]["SourceCreate"];
+                "multipart/form-data": components["schemas"]["SourceCreate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceRow"][];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceDetail"];
+                };
+            };
+        };
+    };
+    projects_sources_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceDetail"];
+                };
+            };
+        };
+    };
+    projects_sources_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptMany"];
+                "application/x-www-form-urlencoded": components["schemas"]["AcceptMany"];
+                "multipart/form-data": components["schemas"]["AcceptMany"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceDetail"];
+                };
+            };
+        };
+    };
+    projects_sources_draft_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceDetail"];
                 };
             };
         };

@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "apps.inbox",
     "apps.reports",
     "apps.ai",
+    "apps.sources",
     "apps.files",
 ]
 
@@ -301,6 +302,14 @@ FILE_STORAGE_REGION = env("FILE_STORAGE_REGION", default="")
 FILE_STORAGE_ACCESS_KEY = env("FILE_STORAGE_ACCESS_KEY", default="")
 FILE_STORAGE_SECRET_KEY = env("FILE_STORAGE_SECRET_KEY", default="")
 FILE_LINK_TTL_SECONDS = 15 * 60
+# AI drafting (apps/ai, docs/ai.md). The stub provider answers from the document itself, with no
+# network call, until a provider is chosen (D-008). Credit size and the default allowance are
+# stand-ins until real costs are measured (AI §8).
+AI_PROVIDER = env("AI_PROVIDER", default="apps.ai.providers.StubProvider")
+AI_TOKENS_PER_CREDIT = env.int("AI_TOKENS_PER_CREDIT", default=1000)
+AI_DEFAULT_ALLOWANCE = env.int("AI_DEFAULT_ALLOWANCE", default=2000)  # credits a month
+AI_RETRY_WAITS = (2, 4, 8)  # seconds between tries when the provider cannot be reached
+
 ORG_STORAGE_QUOTA_BYTES = env.int("ORG_STORAGE_QUOTA_BYTES", default=10 * 1024**3)  # starter plan
 
 # "clamav" outside development; "stub" only flags the EICAR test file (apps/files/scanner.py).

@@ -22,6 +22,8 @@ import { RunPage } from '../features/runs/RunPage'
 import { RunsList } from '../features/runs/RunsList'
 import { SettingsPage } from '../features/settings/SettingsPage'
 import { SharedReportPage } from '../features/shared/SharedReportPage'
+import { DraftReview } from '../features/sources/DraftReview'
+import { SourcesList } from '../features/sources/SourcesList'
 import { AppShell } from './AppShell'
 import { Gate, SignedInOnly } from './Gate'
 
@@ -57,6 +59,8 @@ export const router = createBrowserRouter([
       { path: 'projects', element: <ProjectsList /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: ':projectKey', element: <ProjectHome /> },
+      { path: ':projectKey/sources', element: <SourcesList /> },
+      { path: ':projectKey/sources/:id', element: <DraftReview /> },
       { path: ':projectKey/requirements', element: <RequirementsList /> },
       { path: ':projectKey/requirements/new', element: <NewRequirementPage /> },
       { path: ':projectKey/requirements/:no', element: <RequirementPage /> },

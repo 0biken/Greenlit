@@ -58,7 +58,7 @@ def _link(item: Item) -> str:
     return f"{base}/{path}/{int(number)}"
 
 
-def _notify_once(
+def notify_once(
     org_id,
     user_id,
     level: str,
@@ -92,7 +92,7 @@ def _notify_once(
 
 
 def _notify_item(user_id, level: str, item: Item, now: datetime, email=None) -> bool:
-    return _notify_once(
+    return notify_once(
         item.project.org_id,
         user_id,
         level,
@@ -222,7 +222,7 @@ def run_digest(org_id, now: datetime | None = None) -> int:
         day = local.date().isoformat()
         count = len(items)
         subject = f"Greenlit: {count} {'item needs' if count == 1 else 'items need'} you"
-        sent += _notify_once(
+        sent += notify_once(
             org_id,
             member.user_id,
             NotificationLevel.DIGEST,

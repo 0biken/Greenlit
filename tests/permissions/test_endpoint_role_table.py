@@ -36,6 +36,7 @@ from apps.reports.sharing import create_link
 from apps.requirements.services import create_requirement
 from apps.runs.models import CaseResult
 from apps.runs.services import create_release, start_run
+from apps.sources import services as sources
 from tests.support import HANDLED, api_endpoints, declared, stored_file, url_for
 
 pytestmark = pytest.mark.django_db
@@ -113,6 +114,17 @@ SAMPLES = {
     },
     ("api/projects/<str:key>/requirements/<str:requirement_id>/", "patch"): lambda ctx: {
         "text": f"Changed {next(_counter)} times."
+    },
+    ("api/projects/<str:key>/requirements/<str:requirement_id>/review/", "post"): lambda ctx: {
+        "decision": "accepted"
+    },
+    ("api/projects/<str:key>/sources/", "post"): lambda ctx: {
+        "title": "Pasted PRD",
+        "text": f"Rule {next(_counter)}: a cashier must check every item twice.",
+    },
+    ("api/projects/<str:key>/sources/<uuid:source_id>/draft/", "post"): lambda ctx: {},
+    ("api/projects/<str:key>/sources/<uuid:source_id>/accept/", "post"): lambda ctx: {
+        "numbers": [ctx["fresh_draft"]()]
     },
     ("api/projects/<str:key>/plans/", "post"): lambda ctx: {"title": "Another plan"},
     ("api/projects/<str:key>/plans/<str:plan_id>/draft/", "post"): lambda ctx: {},
@@ -273,6 +285,25 @@ def _org_with_a_member_of_each_role():
         plans.approve(plans.draft_of(twice), None)
     plan_base = "api/projects/<str:key>/plans/<str:plan_id>/"
 
+    with org_scope(org.id):
+        source = sources.create_from_text(
+            project, None, title="Sample PRD", text="A cashier must check every item twice."
+        )
+
+    def fresh_draft() -> int:
+        """A requirement drafted from the sample source, waiting for review."""
+        with org_scope(org.id):
+            made = create_requirement(
+                project,
+                None,
+                title="A draft",
+                text="Drafted.",
+                review_state="draft",
+                origin="ai",
+                source_document=source,
+            )
+        return made.display_no
+
     def fresh_link() -> str:
         with org_scope(org.id):
             return str(create_link(signed, None)[0].pk)
@@ -280,6 +311,9 @@ def _org_with_a_member_of_each_role():
     signed_release = {"version": "6.0", "link_id": fresh_link}
     ctx = {
         "route_params": {
+            "api/projects/<str:key>/requirements/<str:requirement_id>/review/": {
+                "requirement_id": lambda: str(fresh_draft())
+            },
             plan_base + "versions/<str:version>/": {"version": "draft"},
             plan_base + "versions/<str:version>/roll-back/": {
                 "plan_id": rolled,
@@ -292,6 +326,7 @@ def _org_with_a_member_of_each_role():
             ),
         },
         "fresh_member": fresh_member,
+        "fresh_draft": fresh_draft,
         "file_id": str(upload.id),
         "plan_no": plan.display_no,
         "open_release": open_release.name,
@@ -305,6 +340,7 @@ def _org_with_a_member_of_each_role():
             "version": fresh_release,
             "defect_id": fresh_fixed_defect,
             "requirement_id": str(requirement.display_no),
+            "source_id": str(source.pk),
             # `plan_id` is worked out before `case_id`, which names that plan's own case.
             "plan_id": fresh_plan,
             "case_id": lambda: last_case["no"],

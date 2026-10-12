@@ -18,6 +18,7 @@ from apps.plans import views as plan_views
 from apps.reports import views as report_views
 from apps.requirements import views as requirement_views
 from apps.runs import views as run_views
+from apps.sources import views as source_views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -68,6 +69,27 @@ urlpatterns = [
         "api/projects/<str:key>/requirements/<str:requirement_id>/",
         requirement_views.requirement_detail,
         name="requirement-detail",
+    ),
+    path(
+        "api/projects/<str:key>/requirements/<str:requirement_id>/review/",
+        source_views.review,
+        name="requirement-review",
+    ),
+    path("api/projects/<str:key>/sources/", source_views.sources, name="sources"),
+    path(
+        "api/projects/<str:key>/sources/<uuid:source_id>/",
+        source_views.source_detail,
+        name="source-detail",
+    ),
+    path(
+        "api/projects/<str:key>/sources/<uuid:source_id>/draft/",
+        source_views.draft,
+        name="source-draft",
+    ),
+    path(
+        "api/projects/<str:key>/sources/<uuid:source_id>/accept/",
+        source_views.accept,
+        name="source-accept",
     ),
     path("api/projects/<str:key>/plans/", plan_views.plans, name="plans"),
     path("api/projects/<str:key>/plans/<str:plan_id>/", plan_views.plan_detail, name="plan-detail"),

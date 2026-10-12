@@ -11,6 +11,9 @@ CACHES = {"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}
 # enforcement switch it on themselves, and test_defaults checks the real default.
 ENFORCE_MFA_ROLES = []
 
+# No waiting between tries when a test makes the AI provider fail.
+AI_RETRY_WAITS = (0, 0, 0)
+
 # Uploaded files go to a throwaway folder, never the developer's api/var/files.
 import tempfile  # noqa: E402
 

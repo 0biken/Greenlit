@@ -1,8 +1,7 @@
 import { NavLink } from 'react-router'
 import './projects.css'
 
-// Inside a project, in the order work usually happens (UX navigation map). Screens that are
-// not built yet (sources) join this row as they arrive.
+// Inside a project, in the order work usually happens (UX navigation map).
 export function ProjectNav({ projectKey }: { projectKey: string }) {
   const base = `/${projectKey.toLowerCase()}`
   return (
@@ -10,6 +9,7 @@ export function ProjectNav({ projectKey }: { projectKey: string }) {
       <NavLink to={base} end>
         Home
       </NavLink>
+      <NavLink to={`${base}/sources`}>Sources</NavLink>
       <NavLink to={`${base}/requirements`}>Requirements</NavLink>
       <NavLink to={`${base}/plans`}>Plans</NavLink>
       <NavLink to={`${base}/runs`}>Runs</NavLink>

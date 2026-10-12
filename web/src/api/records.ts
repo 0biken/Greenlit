@@ -56,3 +56,7 @@ export type PlanDiff = S['PlanDiff']
 export type CaseDetail = S['CaseDetail']
 export type CaseWrite = S['CaseWrite']
 export type CaseEdit = S['PatchedCaseEdit']
+
+export type SourceRow = S['SourceRow']
+export type SourceDetail = S['SourceDetail']
+export type SourceItem = S['SourceItem']

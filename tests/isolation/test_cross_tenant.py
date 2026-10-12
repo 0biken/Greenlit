@@ -205,6 +205,7 @@ def test_no_alpha_response_contains_any_of_bravos_data(world):
                         "requirement_id": str(world.alpha_spine["requirement"].pk),
                         "plan_id": str(world.alpha_spine["plan"].pk),
                         "case_id": str(world.alpha_spine["case"].pk),
+                        "source_id": str(world.alpha_spine["source"].pk),
                         "run_id": str(world.alpha_spine["run"].pk),
                         "token": world.alpha_spine["share_token"],
                         "link_id": str(world.alpha_spine["share_link"].pk),
@@ -244,6 +245,7 @@ def test_bravos_identifiers_are_not_found_under_alpha(world):
                         "requirement_id": str(world.bravo_spine["requirement"].pk),
                         "plan_id": str(world.bravo_spine["plan"].pk),
                         "case_id": str(world.bravo_spine["case"].pk),
+                        "source_id": str(world.bravo_spine["source"].pk),
                         "run_id": str(world.bravo_spine["run"].pk),
                         "token": world.bravo_spine["share_token"],
                         "link_id": str(world.bravo_spine["share_link"].pk),
@@ -381,6 +383,9 @@ def test_alpha_cannot_reach_bravos_requirements_plans_or_cases_under_its_own_pro
     headers = {"X-Org": "alpha-iso"}
     base = "/api/projects/shared"
     requirement, plan, case = (str(bravo[k].pk) for k in ("requirement", "plan", "case"))
+    set_scope(world.bravo.id, world.bravo_owner.pk)
+    bravo_draft = str(Requirement.objects.filter(review_state="draft").first().pk)
+    set_scope(world.alpha.id, world.alpha_owner.pk)
     calls = [
         ("get", f"{base}/requirements/{requirement}/", None),
         ("patch", f"{base}/requirements/{requirement}/", {"text": "Taken over"}),
@@ -390,12 +395,29 @@ def test_alpha_cannot_reach_bravos_requirements_plans_or_cases_under_its_own_pro
         ("post", f"{base}/plans/{plan}/draft/", {}),
         ("post", f"{base}/plans/{plan}/versions/1.0/roll-back/", {}),
         ("get", f"{base}/cases/{case}/", None),
+        ("get", f"{base}/sources/{bravo['source'].pk}/", None),
+        ("post", f"{base}/sources/{bravo['source'].pk}/draft/", {}),
+        ("post", f"{base}/sources/{bravo['source'].pk}/accept/", {"numbers": [2]}),
+        ("post", f"{base}/requirements/{bravo_draft}/review/", {"decision": "accepted"}),
     ]
     for method, url, body in calls:
         response = getattr(client, method)(
             url, data=body, content_type="application/json", headers=headers
         )
         assert response.status_code == 404, f"{method.upper()} {url}: {response.status_code}"
+
+    # Bravo's file cannot be made one of Alpha's sources: it names nothing here.
+    from apps.sources.models import SourceDocument
+
+    taken = client.post(
+        f"{base}/sources/",
+        data={"file_id": str(world.bravo_file.id)},
+        content_type="application/json",
+        headers=headers,
+    )
+    assert taken.status_code == 400
+    set_scope(world.alpha.id, world.alpha_owner.pk)
+    assert SourceDocument.objects.count() == 1  # only the one Alpha was seeded with
 
     # Alpha's own plan: open a draft, then try to bring Bravo's case and requirement into it.
     own = f"{base}/plans/{alpha['plan'].pk}"
@@ -420,6 +442,7 @@ def test_alpha_cannot_reach_bravos_requirements_plans_or_cases_under_its_own_pro
         assert marker not in linked.content.decode()
 
     set_scope(world.bravo.id, world.bravo_owner.pk)
-    assert Requirement.objects.get().revision == 1
+    assert Requirement.objects.get(pk=bravo["requirement"].pk).revision == 1
     assert not PlanVersion.objects.filter(state="draft").exists()
     assert CaseRevision.objects.count() == 1
+    assert Requirement.objects.filter(review_state="draft").count() == 2  # none accepted

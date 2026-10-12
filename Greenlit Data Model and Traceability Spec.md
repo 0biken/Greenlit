@@ -39,7 +39,7 @@ Each case result also points at the exact case revision it tested, which is how 
 
 ## Entities and fields
 
-There are 33 tables: 31 listed here in seven groups, the requirement-to-case link in section 5 and the ID counter in section 4. Test cases are split into a stable identity (`test_case`) and immutable content snapshots (`case_revision`), which lets versioning and run history work without copying whole plans.
+There are 37 tables: 35 listed here in seven groups, the requirement-to-case link in section 5 and the ID counter in section 4. Test cases are split into a stable identity (`test_case`) and immutable content snapshots (`case_revision`), which lets versioning and run history work without copying whole plans.
 
 **Account**
 
@@ -56,7 +56,11 @@ There are 33 tables: 31 listed here in seven groups, the requirement-to-case lin
 
 | Table | Key fields | Rules |
 | --- | --- | --- |
-| source\_document | project\_id, kind (enum: prd, screenshot\_set, qa\_report), file\_ref, page\_count | The uploaded file, kept as evidence of origin |
+| source\_document | project\_id, kind (enum: prd, screenshot\_set, qa\_report), title, file\_ref (empty for pasted text), page\_count, state (enum: waiting, parsing, ready, failed), failure, text\_sha256, job\_id | The uploaded file or pasted text, kept as evidence of origin |
+| source\_extraction *(proposed)* | document\_id, text, pages (json), sections (json) | The text read out of a source document, with where each page and section sits in it. A draft's quote is looked up here, and the position found is its provenance |
+| ai\_call *(proposed, closes G-05)* | feature, model, prompt\_version, input\_hash, outcome (enum: ok, reused, bad\_output, unavailable), tokens\_in, tokens\_out, cost\_usd, duration\_ms, reply (json), gaps (json), source\_id, job\_id | One call to the model provider. `reply` is kept so unchanged input is not paid for twice |
+| ai\_dropped\_item *(proposed, closes G-05)* | call\_id, reason, item (json) | A draft the checks refused. Kept for quality review; never shown as a record |
+| ai\_draft *(proposed, closes G-06)* | target\_type, target\_id, call\_id, flags (json), decision (enum: accepted, rejected), reject\_reason (enum: wrong, duplicate, too\_vague, not\_testable), decided\_by, decided\_at, fast\_accept | What the AI flagged about one drafted record and what a person decided. One row per drafted record of any kind |
 | requirement | project\_id, display\_no, title, text, priority, revision (int), source\_document\_id, source\_locator (json), review\_state, origin | `revision` goes up when `text` changes; `source_locator` holds page and passage, or image region |
 | requirement\_revision *(proposed, closes G-07)* | requirement\_id, revision (int), text, source\_locator (json) | The text a requirement had at one revision. A row is written when a revision becomes current and never changed, so the passage a case was written against stays readable. Unique per requirement and revision |
 

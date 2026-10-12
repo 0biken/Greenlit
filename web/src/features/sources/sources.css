@@ -1,0 +1,178 @@
+/* Sources and the draft review screen. */
+
+.source-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.source-notice {
+  margin: 0 0 16px;
+}
+.fast-accepts {
+  color: var(--hold-deep);
+}
+
+/* ---------- notes above the review ---------- */
+.review-notes {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.review-notes:empty {
+  display: none;
+}
+.review-note {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--sheet);
+  border: var(--hairline);
+  border-radius: var(--radius);
+}
+.review-warn {
+  background: var(--hold-bg);
+  border-color: var(--hold-line);
+}
+
+/* ---------- source on the left, drafts on the right ---------- */
+.review-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  gap: 32px;
+  align-items: start;
+}
+.review-source {
+  position: sticky;
+  top: calc(var(--topbar-h) + 16px);
+  max-height: calc(100vh - var(--topbar-h) - 32px);
+  overflow: auto;
+  padding: 16px 20px;
+  background: var(--sheet);
+  border: var(--hairline);
+  border-radius: var(--radius);
+}
+.review-page + .review-page {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule-soft);
+}
+.review-text {
+  margin: 6px 0 0;
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.6;
+}
+/* The passage a draft came from: the blue-pencil colour, plus an underline so it does not
+   rest on colour alone. */
+.passage {
+  background: var(--draft-bg);
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--pencil);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  scroll-margin: 80px;
+}
+
+.gaps {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  background: var(--open-bg);
+  border: 1px solid var(--open-line);
+  border-radius: var(--radius);
+}
+.gaps-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.gaps ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.review-all {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0 0 12px;
+}
+
+.draft-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: var(--hairline);
+}
+.draft-card {
+  border-bottom: var(--hairline);
+}
+.draft-card[data-on] {
+  background: var(--sheet);
+  box-shadow: inset 3px 0 0 var(--pencil);
+}
+.draft-card[data-state='rejected'] .draft-card-title {
+  color: var(--ink-3);
+  text-decoration: line-through;
+}
+.draft-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.draft-card-head:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+.draft-card-title {
+  flex: 1 1 14ch;
+  min-width: 0;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.draft-card-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 12px 14px;
+}
+.draft-card-body p {
+  margin: 0;
+}
+.draft-flag {
+  padding-left: 10px;
+  border-left: 2px solid var(--hold);
+  color: var(--ink-2);
+  font-size: 14px;
+}
+.draft-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .draft-card:not([data-on]) .draft-card-head:hover {
+    background: var(--paper-2);
+  }
+}
+
+@media (max-width: 860px) {
+  .review-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .review-source {
+    position: static;
+    max-height: 40vh;
+  }
+}

@@ -2,6 +2,7 @@
 
 from django.db.models import Q
 
+from apps.core.choices import ReviewState
 from apps.core.models import AuditEvent, CounterKind, Membership, Project, display_name
 from apps.core.numbering import format_display_id
 from apps.core.policy import Action, can
@@ -13,6 +14,8 @@ HISTORY = {
     "requirement.created": lambda a: "added this requirement",
     "requirement.edited": lambda a: "edited " + ", ".join(a.get("fields", [])),
     "requirement.text_changed": lambda a: f"changed the text (revision {a.get('revision', '')})",
+    "requirement.accepted": lambda a: "accepted this draft",
+    "requirement.rejected": lambda a: "rejected this draft",
 }
 
 
@@ -53,9 +56,15 @@ def _row(requirement: Requirement, links: list) -> dict:
 
 
 def requirement_list(
-    project: Project, *, q: str = "", priority: str = "", coverage: str = ""
+    project: Project, *, q: str = "", priority: str = "", coverage: str = "", state: str = ""
 ) -> list[dict]:
+    """Rejected drafts are left out unless asked for: they are kept for quality review, not
+    as requirements."""
     rows = Requirement.objects.filter(project=project)
+    if state in ReviewState.values:
+        rows = rows.filter(review_state=state)
+    else:
+        rows = rows.exclude(review_state=ReviewState.REJECTED)
     if priority:
         rows = rows.filter(priority=priority)
     if q.strip():
@@ -99,12 +108,22 @@ def detail(requirement: Requirement, membership: Membership) -> dict:
                 "by": None,
             },
         )
+    document = requirement.source_document
     events = AuditEvent.objects.filter(
         target_type="requirement", target_id=str(requirement.pk)
     ).select_related("actor")
     return {
         **_row(requirement, links),
         "text": requirement.text,
+        "stated_in": (
+            {
+                "id": document.pk,
+                "title": document.title,
+                "page": requirement.source_locator.get("page"),
+            }
+            if document
+            else None
+        ),
         "created_by": display_name(requirement.created_by),
         "created_at": requirement.created_at,
         "linked_cases": [

@@ -18,6 +18,7 @@ const COVERAGE = [
   { id: 'uncovered', label: 'No test cases' },
   { id: 'covered', label: 'Covered' },
 ]
+// Drafts the AI wrote that nobody has accepted yet. They count nowhere until someone does.
 export const CAN_WRITE = ['owner', 'admin', 'qa_lead', 'qa_engineer']
 
 export function RequirementsList() {
@@ -28,12 +29,13 @@ export function RequirementsList() {
   const coverage = params.get('coverage') ?? ''
   const q = params.get('q') ?? ''
   const [search, setSearch] = useState(q)
-  const requirements = useRequirements(key, { coverage, q })
+  const drafts = params.get('state') === 'draft'
+  const requirements = useRequirements(key, drafts ? { state: 'draft', q } : { coverage, q })
   const base = `/${projectKey.toLowerCase()}/requirements`
   const canWrite = CAN_WRITE.includes(membership.role)
 
   function setFilter(next: Record<string, string>) {
-    const merged = { coverage, q, ...next }
+    const merged = { coverage, q, state: drafts ? 'draft' : '', ...next }
     setParams(Object.fromEntries(Object.entries(merged).filter(([, v]) => v)), { replace: true })
   }
 
@@ -63,12 +65,20 @@ export function RequirementsList() {
               key={c.id}
               type="button"
               className="filter"
-              aria-current={coverage === c.id ? 'true' : undefined}
-              onClick={() => setFilter({ coverage: c.id })}
+              aria-current={!drafts && coverage === c.id ? 'true' : undefined}
+              onClick={() => setFilter({ coverage: c.id, state: '' })}
             >
               {c.label}
             </button>
           ))}
+          <button
+            type="button"
+            className="filter"
+            aria-current={drafts ? 'true' : undefined}
+            onClick={() => setFilter({ coverage: '', state: 'draft' })}
+          >
+            Drafts
+          </button>
         </div>
         <form
           role="search"
@@ -99,7 +109,7 @@ export function RequirementsList() {
       ) : requirements.isError && !requirements.data ? (
         <ErrorState message="Couldn't load the requirements." onRetry={() => requirements.refetch()} />
       ) : !requirements.data.length ? (
-        coverage || q ? (
+        coverage || q || drafts ? (
           <EmptyState title="No requirements match these filters." />
         ) : (
           <EmptyState
@@ -136,7 +146,9 @@ export function RequirementsList() {
                   {r.review_state === 'draft' ? <span>Draft</span> : null}
                 </span>
                 <span className="defect-status">
-                  {!r.covered ? (
+                  {r.review_state === 'draft' ? (
+                    <StatusChip status="draft" />
+                  ) : !r.covered ? (
                     <StatusChip status="uncovered" />
                   ) : r.stale_cases ? (
                     <StatusChip status="stale" word={r.stale_cases === 1 ? '1 stale case' : `${r.stale_cases} stale cases`} />

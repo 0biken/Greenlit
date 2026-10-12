@@ -47,6 +47,8 @@ def create_requirement(
     priority: str = Priority.MEDIUM,
     review_state: str = ReviewState.ACCEPTED,
     origin: str = Origin.HUMAN,
+    source_document=None,
+    source_locator: dict | None = None,
 ) -> Requirement:
     _check(title, text, priority)
     with transaction.atomic():
@@ -59,6 +61,8 @@ def create_requirement(
             priority=priority,
             review_state=review_state,
             origin=origin,
+            source_document=source_document,
+            source_locator=source_locator or {},
             created_by=actor,
         )
         keep_revision(requirement, actor)
@@ -126,4 +130,32 @@ def update_requirement(requirement: Requirement, actor, **changes) -> Requiremen
             )
         if "text" in changes:
             change_text(requirement, actor, changes["text"])
+    return requirement
+
+
+def review(requirement: Requirement, actor, decision: str, *, model: str = "") -> Requirement:
+    """Accept or reject a draft (FR-PLAN-04, AI-01). Only an accepted requirement counts
+    anywhere. The audit entry names the model and the source, never the text."""
+    if decision not in (ReviewState.ACCEPTED, ReviewState.REJECTED):
+        raise ServiceError("Choose accept or reject.")
+    if requirement.review_state == decision:
+        return requirement
+    if requirement.review_state != ReviewState.DRAFT:
+        raise ServiceError("Only a draft can be accepted or rejected.", code="conflict")
+    with transaction.atomic():
+        requirement.review_state = decision
+        requirement.save(update_fields=["review_state", "updated_at"])
+        audit.record(
+            f"requirement.{decision}",
+            "requirement",
+            requirement.pk,
+            actor=actor,
+            before={"review_state": ReviewState.DRAFT},
+            after={
+                "review_state": decision,
+                "origin": requirement.origin,
+                "model": model,
+                "source": str(requirement.source_document_id or ""),
+            },
+        )
     return requirement

@@ -28,6 +28,7 @@ class NotificationLevel(models.TextChoices):
     SECOND = "96h"  # the second: the project's leads are told as well
     CRITICAL = "critical"  # closed with a failed retest: told at once
     DIGEST = "digest"  # the daily email
+    AI_80 = "ai_80"  # 80% of the month's AI allowance is used (owners and admins)
 
 
 class Notification(TenantModel):

@@ -21,6 +21,8 @@ import type {
   RequirementWrite,
   RunDetail,
   RunRow,
+  SourceDetail,
+  SourceRow,
   ShareLink,
   ShareLinkCreated,
   SharedReport,
@@ -67,6 +69,8 @@ export const keys = {
   requirements: (key: string, filters: RequirementFilters) =>
     ['org', org(), 'project', key, 'requirements', filters] as const,
   requirement: (key: string, id: string) => ['org', org(), 'project', key, 'requirement', id] as const,
+  sources: (key: string) => ['org', org(), 'project', key, 'sources'] as const,
+  source: (key: string, id: string) => ['org', org(), 'project', key, 'source', id] as const,
   runs: (key: string) => ['org', org(), 'project', key, 'runs'] as const,
   run: (key: string, id: string) => ['org', org(), 'project', key, 'run', id] as const,
   shareLinks: (key: string, version: string) => ['org', org(), 'project', key, 'release', version, 'links'] as const,
@@ -126,11 +130,11 @@ export function useUnsnooze() {
 
 type UploadStarted = components['schemas']['UploadStarted']
 
-/** Send one evidence file through the file service: ask for a place, send the bytes, confirm. */
-export async function uploadEvidence(projectKey: string, file: File): Promise<string> {
+/** Send one file through the file service: ask for a place, send the bytes, confirm. */
+export async function uploadFile(projectKey: string, file: File, kind: 'evidence' | 'prd'): Promise<string> {
   const started = await api<UploadStarted>(`/api/projects/${encodeURIComponent(projectKey)}/files/`, {
     method: 'POST',
-    body: { kind: 'evidence', name: file.name, size: file.size },
+    body: { kind, name: file.name, size: file.size },
   })
   const { method, url, fields, headers } = started.upload
   let body: BodyInit = file
@@ -146,6 +150,8 @@ export async function uploadEvidence(projectKey: string, file: File): Promise<st
   await api(`/api/files/${started.file.id}/complete/`, { method: 'POST' })
   return started.file.id
 }
+
+export const uploadEvidence = (projectKey: string, file: File) => uploadFile(projectKey, file, 'evidence')
 
 export type RetestInput = {
   projectKey: string
@@ -364,7 +370,7 @@ export const downloadSharedPdf = (token: string) =>
 
 // ---- requirements ------------------------------------------------------------------------------
 
-export type RequirementFilters = { q?: string; priority?: string; coverage?: string }
+export type RequirementFilters = { q?: string; priority?: string; coverage?: string; state?: string }
 
 const requirementUrl = (key: string, id: string) => `${project(key)}/requirements/${encodeURIComponent(id)}/`
 
@@ -487,3 +493,66 @@ export type DraftChange =
   | { do: 'add'; body: CaseWrite }
   | { do: 'edit'; case: number; body: CaseEdit }
   | { do: 'remove'; case: number }
+
+// ---- sources and draft review ------------------------------------------------------------------
+
+/** While a document is being checked, read or drafted from, ask again every two seconds. */
+const BUSY_EVERY_MS = 2000
+const busy = (s: SourceRow) => s.state === 'waiting' || s.state === 'parsing' || Boolean(s.job?.running)
+
+export const useSources = (key: string) =>
+  useQuery({
+    queryKey: keys.sources(key),
+    queryFn: () => api<SourceRow[]>(`${project(key)}/sources/`),
+    refetchInterval: (query) => (query.state.data?.some(busy) ? BUSY_EVERY_MS : false),
+  })
+
+export const useSource = (key: string, id: string) =>
+  useQuery({
+    queryKey: keys.source(key, id),
+    queryFn: () => api<SourceDetail>(`${project(key)}/sources/${id}/`),
+    refetchInterval: (query) => (query.state.data && busy(query.state.data) ? BUSY_EVERY_MS : false),
+  })
+
+/** Add a PRD: a file (uploaded first, through the file service) or pasted text. */
+export function useAddSource(key: string) {
+  const invalidate = useInvalidateWork()
+  return useMutation({
+    mutationFn: async (input: { title: string; text: string } | { file: File }) => {
+      const body =
+        'file' in input ? { file_id: await uploadFile(key, input.file, 'prd') } : { title: input.title, text: input.text }
+      return api<SourceDetail>(`${project(key)}/sources/`, { method: 'POST', body })
+    },
+    onSuccess: invalidate,
+  })
+}
+
+export type ReviewAction =
+  | { do: 'decide'; number: number; decision: 'accepted' | 'rejected'; reason?: string; viewed_ms?: number }
+  | { do: 'accept_many'; numbers: number[]; viewed_ms?: number }
+  | { do: 'edit'; number: number; body: Partial<RequirementWrite> }
+  | { do: 'draft_again' }
+
+/** Everything the draft review screen does to one source's drafts. */
+export function useReview(key: string, sourceId: string) {
+  const invalidate = useInvalidateWork()
+  return useMutation({
+    mutationFn: (action: ReviewAction) => {
+      const source = `${project(key)}/sources/${sourceId}/`
+      switch (action.do) {
+        case 'decide':
+          return api(`${project(key)}/requirements/${action.number}/review/`, {
+            method: 'POST',
+            body: { decision: action.decision, reason: action.reason ?? '', viewed_ms: action.viewed_ms },
+          })
+        case 'accept_many':
+          return api(`${source}accept/`, { method: 'POST', body: { numbers: action.numbers, viewed_ms: action.viewed_ms } })
+        case 'edit':
+          return api(requirementUrl(key, String(action.number)), { method: 'PATCH', body: action.body })
+        case 'draft_again':
+          return api(`${source}draft/`, { method: 'POST' })
+      }
+    },
+    onSuccess: invalidate,
+  })
+}

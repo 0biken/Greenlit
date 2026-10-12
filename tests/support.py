@@ -21,6 +21,7 @@ PARAMS = {
     "requirement_id": "1",
     "plan_id": "1",
     "case_id": "1",
+    "source_id": "00000000-0000-0000-0000-000000000000",
     "run_id": "1",
     "token": "no-such-token",
     "link_id": "00000000-0000-0000-0000-000000000000",
@@ -255,7 +256,29 @@ def seed_spine(org, project, lead, tester, upload, label: str = "Sample"):
         cycle=f"{label} cycle",
         sent_at=timezone.now(),
     )
+    # A pasted PRD with requirements drafted from it (the stub provider answers from the text),
+    # and one draft the checks refused.
+    from apps.ai.models import AiCall, AiDroppedItem
+    from apps.core.models import Job
+    from apps.sources import jobs as source_jobs
+    from apps.sources import services as sources
+
+    source = sources.create_from_text(
+        project,
+        lead,
+        title=f"{label} PRD",
+        text=f"{label} users must be able to pay by card at the till. "
+        f"{label} shoppers can also collect their order in the shop.",
+    )
+    source_jobs.draft_requirements(Job.objects.get(pk=source.job_id), str(source.pk))
+    AiDroppedItem.objects.create(
+        org_id=org.id,
+        call=AiCall.objects.filter(source_id=source.pk).first(),
+        reason="quote_not_found",
+        item={"title": f"{label} invented requirement"},
+    )
     return {
+        "source": source,
         "share_link": share_link,
         "share_token": share_token,
         "requirement": requirement,

@@ -8,7 +8,8 @@ class Requirement(TenantModel):
     """One requirement (DATA §3). `revision` goes up when `text` changes, which makes the
     cases written against the old text Stale (`case_requirement.req_revision_seen`).
 
-    `source_document_id` arrives with source documents (M2-01).
+    `source_locator` says where in `source_document` it is stated: page and character
+    positions for a passage (AI §5).
     """
 
     project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name="+")
@@ -17,6 +18,13 @@ class Requirement(TenantModel):
     text = models.TextField()
     priority = models.CharField(max_length=10, choices=Priority.choices, default=Priority.MEDIUM)
     revision = models.PositiveIntegerField(default=1)
+    source_document = models.ForeignKey(
+        "sources.SourceDocument",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="requirements",
+    )
     source_locator = models.JSONField(default=dict, blank=True)
     review_state = models.CharField(
         max_length=10, choices=ReviewState.choices, default=ReviewState.DRAFT
