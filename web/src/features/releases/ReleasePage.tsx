@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router'
-import type { Blocker, BlockerType, ReleaseDetail } from '../../api/planned'
+import type { Blocker, BlockerType, ReleaseDetail } from '../../api/records'
 import { ApiError } from '../../api/client'
 import { useRelease, useSignOff } from '../../api/queries'
 import { useOrg } from '../../app/Gate'
@@ -96,7 +96,7 @@ export function ReleasePage() {
       </div>
 
       <RetestDialog
-        defect={retesting ? { displayId: retesting.display_id, title: retesting.title } : null}
+        defect={retesting ? { projectKey: key, displayId: retesting.display_id, title: retesting.title } : null}
         onClose={() => setRetesting(null)}
       />
     </div>
@@ -185,9 +185,16 @@ function ReportPane({ release }: { release: ReleaseDetail }) {
     <div className="report-sheet" data-frozen={r.state === 'signed' || undefined}>
       <div className="report-head">
         <h2 id="report-h" className="overline">
-          Release report <IdTag id={r.display_id} />
+          Release report {r.display_id ? <IdTag id={r.display_id} /> : null}
         </h2>
-        {r.state === 'draft' ? <StatusChip status="draft" /> : <StatusChip status="verified" detail="Signed" />}
+        {r.state === 'draft' ? (
+          <StatusChip status="draft" />
+        ) : (
+          // "Verified" is reserved for retested fixes, so a signed report says just that.
+          <span className="chip chip-ver" role="img" aria-label="Report: signed and frozen">
+            <span aria-hidden="true">Signed</span>
+          </span>
+        )}
       </div>
       <p className="report-summary">{r.summary}</p>
       {r.sections.map((sec) => (

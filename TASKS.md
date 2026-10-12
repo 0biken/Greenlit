@@ -138,13 +138,13 @@ Not engineering work, but the build gate depends on it.
 - [x] **M1-17** (apps/core/jobs.py, docs/jobs.md: `job_handler`/`enqueue`, runs in its organisation's scope, retries 10 s doubling to 10 min, then `dead`; errors keep only the class name unless the handler raises `JobFailure` with a message written for people; a job delivered twice runs once; a running job silent for 30 min is taken over; progress commits as it goes and is readable from another connection mid-run; `for_each_org` fans out from `org_registry`; `GET /api/jobs/`, `GET /api/jobs/{id}/`, `POST /api/jobs/{id}/rerun/` (owners and admins). 20 tests; 9 deliberate breaks caught, one of them only after fixing a test that was checking itself. A real Redis-backed worker and beat schedule have not run, since there is no Redis here) Job framework: base task that requires one `org_id` and sets the scope before touching data; safe to run twice; retries with growing delays; failed jobs land in an admin list that can re-run them; progress written to the `job` table for the browser (G-04, D-010, ARCH §6).
 - [x] **M1-18** Front-end shell: sign-in screens; organisation switcher; top bar Inbox, Projects, Settings; routes by display ID; brand tokens on `:root`; Radix primitives; status chip component (mark plus word, never colour alone); visible focus ring; `?` shortcut overlay (UX §1, §10). *Styling needs P0-04.*
 - [~] **M1-19** (API done: change role, remove member, list and revoke invitations, edit project and its settings, add and remove project members; owners only for owner changes, never zero owners, everything audited, a stranger's or other tenant's ID is 404; project settings validated with spec defaults in apps/core/project_settings.py (G-08 closed). 29 tests plus permission-table and isolation coverage; 9 deliberate breaks caught. Screens come with M1-18) Settings: members (invite, change role, remove, all audited), projects, project settings (G-08).
-- [x] **M1-20** Seed command: two organisations with projects, members of every role, and sample records for each module as it lands (used locally, on staging and by M1-15).
+- [x] **M1-20** (apps/core/management/commands/seed.py: Karma Groups (every role, all on its three projects) and Globex. Sample records through the services: HUBE release 2.4.1, not ready, with fixes waiting for retest, a defect closed with a failed retest, an unfiled failure, a stale test and an uncovered critical requirement; KOLA release 5.0.0; MARA left empty. Safe to run again) Seed command: two organisations with projects, members of every role, and sample records for each module as it lands (used locally, on staging and by M1-15).
 
 ## M2. Source documents, requirements and the AI core (weeks 7 to 8)
 
 - [ ] **M2-01** `source_document` (project\_id, kind: prd, screenshot\_set, qa\_report; file\_ref; page\_count). PRD upload or pasted text on the project's Sources screen (FR-PLAN-01; UX §2 screen 5).
 - [ ] **M2-02** `scan_and_parse` job: malware scan; text and images extracted with page and character positions (pdfplumber, python-docx, Markdown, plain text); OCR only as fallback; extraction stored. Queues the matching AI job when done (ARCH §5, §6).
-- [ ] **M2-03** `requirement` (display\_no, title, text, priority, revision, source\_document\_id, source\_locator, review\_state, origin). A text change raises `revision` and keeps the old provenance (G-07).
+- [~] **M2-03** (table, `create_requirement` and `change_text` (raises `revision`) in apps/requirements. Still to do: `source_document_id` (with M2-01), old-provenance history (G-07) and the API and screen (M2-08)) `requirement` (display\_no, title, text, priority, revision, source\_document\_id, source\_locator, review\_state, origin). A text change raises `revision` and keeps the old provenance (G-07).
 - [ ] **M2-04** AI client in `api/ai/`, the only code that calls the provider (ARCH §4):
   - Per-feature JSON schema; document text in a clearly delimited data section; the model gets no tools (AI §6).
   - Requests built from one organisation's records only; no shared caches or indexes (AI-04).
@@ -169,52 +169,52 @@ Not engineering work, but the build gate depends on it.
 
 ## M3. Test plans, cases and versioning (weeks 7 to 8)
 
-- [ ] **M3-01** Tables `test_plan`, `plan_version`, `test_case`, `case_revision`, `plan_version_case`, `case_requirement` (with `req_revision_seen`). Database constraints: one draft per plan (partial unique index); a trigger refuses updates to published versions and to revisions used by them (DATA §3, §5, §6; FR-TC-02).
+- [x] **M3-01** (apps/plans: six tables; one draft per plan; database triggers refuse changes to a published or superseded version, its list of cases and the revisions it uses. Tests in apps/plans/tests/test_frozen.py) Tables `test_plan`, `plan_version`, `test_case`, `case_revision`, `plan_version_case`, `case_requirement` (with `req_revision_seen`). Database constraints: one draft per plan (partial unique index); a trigger refuses updates to published versions and to revisions used by them (DATA §3, §5, §6; FR-TC-02).
 - [ ] **M3-02** Case editing in a draft: title, preconditions, numbered steps, expected result, priority and linked requirements are validated on save. An edit creates revision n+1 and swaps the draft's pointer; adding creates a case and its first revision; removing drops the pointer only (FR-TC-01; DATA §6 steps 1 to 3).
-- [ ] **M3-03** Approve a draft: requires the approve-plan role; next minor number by default, major bump optional; previous version becomes superseded; `current_version_id` moves; approver and date recorded; audited (FR-PLAN-05; DATA §4 rule 4).
+- [~] **M3-03** (service only (`plans.services.approve`): next minor or major number, previous version superseded, current version moved, approver and date recorded, audited. The endpoint and its approve-plan role check come with the plan screens (M3-10)) Approve a draft: requires the approve-plan role; next minor number by default, major bump optional; previous version becomes superseded; `current_version_id` moves; approver and date recorded; audited (FR-PLAN-05; DATA §4 rule 4).
 - [ ] **M3-04** Editing a published plan opens a draft that copies the current pointers, no content (DATA §6 step 1).
 - [ ] **M3-05** Discard a draft: deletes the draft version and revisions only it used (DATA §6 step 5).
 - [ ] **M3-06** Diff any two versions by `test_case_id`: added, removed, changed (field by field), unchanged hidden by default; steps compared as an ordered list so reordering shows as moved (FR-TC-03).
 - [ ] **M3-07** Roll back: a new version with the old version's pointers, published as the next number; history kept (FR-TC-04).
 - [ ] **M3-08** F2 `draft_cases` (AI §3 F2): input is accepted requirements plus existing cases; a positive and a negative case per requirement where it makes sense; one action per step; checkable expected results; placeholders like `[valid card number]`; case type; gaps list. Accepted drafts go into the plan's draft version (FR-PLAN-03).
-- [ ] **M3-09** Uncovered requirements (accepted requirements with no accepted case in the current version) listed on the plan (FR-PLAN-06; DATA §9).
+- [~] **M3-09** (computed in apps/inbox/derived.py (`uncovered`) and shown in the Inbox, the dashboard and readiness. Listing them on the plan itself comes with M3-10) Uncovered requirements (accepted requirements with no accepted case in the current version) listed on the plan (FR-PLAN-06; DATA §9).
 - [ ] **M3-10** Plan screens: plan list, version history, editor, diff view, submit and approve actions (UX §2 screen 8; UX Flow 1).
 
 ## M4. Releases, runs and evidence (weeks 9 to 10)
 
-- [ ] **M4-01** `release` (name, target\_date, state: open, signed\_off, cancelled): create, list, cancel (DATA §3).
-- [ ] **M4-02** Create a run from a plan version with build, environment and release; the run is fixed to that version for life (FR-RUN-01).
-- [ ] **M4-03** `case_result` per case per run pointing at the exact case revision; Passed, Failed, Blocked, Not run; saves immediately, even when the run is unfinished; latest write wins; old and new outcomes audited (FR-RUN-02).
+- [~] **M4-01** (table and `create_release` in apps/runs. List and cancel endpoints still to do) `release` (name, target\_date, state: open, signed\_off, cancelled): create, list, cancel (DATA §3).
+- [~] **M4-02** (service only (`runs.services.start_run`): a published version only, every case starts Not run. No endpoint yet) Create a run from a plan version with build, environment and release; the run is fixed to that version for life (FR-RUN-01).
+- [~] **M4-03** (table and `record_result` (latest write wins, old and new outcome audited). No endpoint yet; it comes with the run screen (M4-04)) `case_result` per case per run pointing at the exact case revision; Passed, Failed, Blocked, Not run; saves immediately, even when the run is unfinished; latest write wins; old and new outcomes audited (FR-RUN-02).
 - [ ] **M4-04** Run screen: `P`, `F`, `B`, `N`, `E`, arrow keys; live region announces saved results; results saved locally first when offline, with "Saving…" and "Saved"; failed saves stay marked and retry (UX §9, §10).
-- [ ] **M4-05** Evidence: drag and drop or paste; `evidence` plus `evidence_link` (one file can support several results, defects or retests); records uploader, time, run, case and environment; EV-nnnn; test-data notice at upload (FR-RUN-03; SEC §7).
+- [~] **M4-05** (`evidence` and `evidence_link` tables, EV numbers and `attach_evidence` (refuses rejected or infected files and files of another project); used by defects and retests, with real upload through apps/files from the retest dialog. Drag and drop, paste and the test-data notice on the run screen still to do) Evidence: drag and drop or paste; `evidence` plus `evidence_link` (one file can support several results, defects or retests); records uploader, time, run, case and environment; EV-nnnn; test-data notice at upload (FR-RUN-03; SEC §7).
 - [ ] **M4-06** A run cannot be completed while failed results have no evidence; the run lists which ones (FR-RUN-05).
 - [ ] **M4-07** Create a defect from a failed result, pre-filled with steps and evidence and linked back via `found_in_result_id` (FR-RUN-04). *Needs M5-01.*
 
 ## M5. Defects and retests (weeks 9 to 10)
 
-- [ ] **M5-01** `defect` (display\_no, title, steps, expected, actual, severity, tracker\_status, qa\_status, owner\_id, fixed\_at, found\_in\_result\_id, review\_state, origin) and `retest` (outcome, tested\_by, tested\_at, build, environment; one row per retest, never overwritten) (DATA §3).
+- [x] **M5-01** (apps/defects: `defect` and `retest`; the retest table is append-only for the app role) `defect` (display\_no, title, steps, expected, actual, severity, tracker\_status, qa\_status, owner\_id, fixed\_at, found\_in\_result\_id, review\_state, origin) and `retest` (outcome, tested\_by, tested\_at, build, environment; one row per retest, never overwritten) (DATA §3).
 - [ ] **M5-02** Create a defect by hand with title, steps, expected, actual, severity (Critical, High, Medium, Low) and evidence (FR-DEF-01).
-- [ ] **M5-03** One status service that applies every rule in DATA §7 "Transitions Greenlit applies", and the only code that changes `tracker_status` or `qa_status`. Every change audited.
+- [x] **M5-03** (apps/defects/status.py. 28 tests cover every row of the DATA §7 table; a test parses the code and fails if anything else writes either status. 6 deliberate breaks of this round's rules were all caught; the evidence rule only once both of its layers were removed) One status service that applies every rule in DATA §7 "Transitions Greenlit applies", and the only code that changes `tracker_status` or `qa_status`. Every change audited.
   - Done when: a table-driven test covers every row of the DATA §7 status table and all four transition rules.
-- [ ] **M5-04** Set Fixed (developer, QA engineer, QA lead, admin, owner): records `fixed_at`, moves to Needs retest, resets Retest failed to Not retested (FR-DEF-02).
-- [ ] **M5-05** Record a retest, passed or failed, with evidence required for both. A pass gives Verified; a fail gives Retest failed and sets tracker status to Open (v1) (FR-DEF-03).
-- [ ] **M5-06** Won't fix and Deferred: written reason plus approval by a QA lead, admin or owner; reason and approver logged (FR-DEF-04).
+- [x] **M5-04** (`POST /api/projects/{key}/defects/{id}/fixed/`; the id may be the uuid, the number or BUG-n) Set Fixed (developer, QA engineer, QA lead, admin, owner): records `fixed_at`, moves to Needs retest, resets Retest failed to Not retested (FR-DEF-02).
+- [x] **M5-05** (`POST /api/projects/{key}/defects/{id}/retests/` with `evidence_file_ids`; refused without evidence, and for a defect that is not fixed) Record a retest, passed or failed, with evidence required for both. A pass gives Verified; a fail gives Retest failed and sets tracker status to Open (v1) (FR-DEF-03).
+- [~] **M5-06** (service only (`status.decide`): reason required, approver and reason stored and audited. Endpoint and screen with M5-09) Won't fix and Deferred: written reason plus approval by a QA lead, admin or owner; reason and approver logged (FR-DEF-04).
 - [ ] **M5-07** Closing a defect whose latest retest failed raises the critical flag: shown in the Inbox and on readiness, and notified immediately (FR-DEF-05; M6-06).
-- [ ] **M5-08** Fixer-cannot-verify rule behind a project setting, default per the SEC §11 open question (SEC §4).
+- [x] **M5-08** (enforced in `record_retest` from the project's `fixer_cannot_verify` setting (default on): the fixer may record a failed retest but not a pass) Fixer-cannot-verify rule behind a project setting, default per the SEC §11 open question (SEC §4).
 - [ ] **M5-09** Defect list and detail screens; "shown as" labels from DATA §7; phone layout with camera capture for retest evidence (UX Flow 2; UX §10).
   - Done when: on a 375 px screen, a retest with a photo can be recorded in under a minute.
 
 ## M6. Derived states, QA Inbox, reminders and digest (week 11)
 
-- [ ] **M6-01** Derived states as database views, scoped by organisation: needs retest, closed with failed retest, aging (critical 2 days, high 7, medium 14, low 30), stale, uncovered, missing evidence, unfiled failure. Thresholds come from project settings (DATA §9; G-08).
+- [~] **M6-01** (all seven states, with thresholds from project settings, as tested queries in apps/inbox/derived.py rather than database views; see docs/derived-states.md) Derived states as database views, scoped by organisation: needs retest, closed with failed retest, aging (critical 2 days, high 7, medium 14, low 30), stale, uncovered, missing evidence, unfiled failure. Thresholds come from project settings (DATA §9; G-08).
   - Done when: each state has a fixture test that turns it on and off.
 - [ ] **M6-02** Stale: no passed or failed result in 30 days, or a linked requirement's `revision` is above `req_revision_seen`; nightly `stale_check` job (FR-TC-05; ARCH §6).
-- [ ] **M6-03** Inbox API: one list per user across their projects; groups from FR-INB-01 with counts; each item shows its age and its single next action (Retest, Run, Add case, Open); critical band first; snoozed items left out (FR-INB-01; UX §6).
-- [ ] **M6-04** Snooze with a reason and an end date; logged; expires automatically; Snoozed filter; still counts towards readiness (FR-INB-04; DATA §9).
+- [x] **M6-03** (`GET /api/inbox/`; who sees what follows DATA §9 and is tested per role in apps/inbox/tests/test_inbox_api.py) Inbox API: one list per user across their projects; groups from FR-INB-01 with counts; each item shows its age and its single next action (Retest, Run, Add case, Open); critical band first; snoozed items left out (FR-INB-01; UX §6).
+- [x] **M6-04** (`POST /api/inbox/{item}/snooze/` and `/unsnooze/`; at most 90 days; any record in a project you can see may be snoozed, because a snooze only changes your own Inbox) Snooze with a reason and an end date; logged; expires automatically; Snoozed filter; still counts towards readiness (FR-INB-04; DATA §9).
 - [ ] **M6-05** `reminders` job every 15 minutes per organisation: Needs retest past 48 hours goes to the top of the owner's Inbox; past 96 hours it also appears for the QA lead; each level notified once (FR-INB-02; G-01).
 - [ ] **M6-06** Critical items (closed with failed retest) skip the digest and notify the owner and QA lead within one job cycle (FR-INB-03; ARCH §5).
 - [ ] **M6-07** `digest` job at 07:00 in each user's time zone: one email per user with open items, none for users with nothing open; titles and links only, never document contents (FR-INB-03; SEC §10; G-03; D-009).
-- [ ] **M6-08** (screen built in web/src/features/inbox against the mock API in web/src/mocks; switch to the real endpoint when M6-03 lands) Inbox screen, desktop and phone (sidebar becomes filter chips); keyboard navigation; empty, loading and error states from UX §9; status chips read as "Status: Needs retest, 4 days" (UX §6, §10).
+- [x] **M6-08** (web/src/features/inbox, on the real Inbox API; checked in the browser as a QA engineer and a lead. The phone layout was checked on sample data) Inbox screen, desktop and phone (sidebar becomes filter chips); keyboard navigation; empty, loading and error states from UX §9; status chips read as "Status: Needs retest, 4 days" (UX §6, §10).
 - [ ] **M6-09** Metrics instrumentation: reminder action rate within 72 hours, retest lag, escaped closures (PRD §3).
 
 ## M7. Screenshots and report import (week 11)
@@ -227,20 +227,20 @@ Not engineering work, but the build gate depends on it.
 
 ## M8. Release readiness, report and sign-off (weeks 12 to 13)
 
-- [ ] **M8-01** Readiness per release: Not ready yet if any needs retest, open critical, closed with failed retest, uncovered critical requirement or unfiled failure exists; blockers listed by type with counts, each linking to its record; the panel updates without a reload; "Checking…" while loading and "Couldn't check" blocks sign-off (FR-RPT-01; DATA §9; UX Flow 3).
-- [ ] **M8-02** Verified coverage per release, as defined in DATA §9 (the North Star).
-- [ ] **M8-03** Facts builder: the one function that computes run results, defect states, blockers and coverage for a release. F5, the report, and readiness all read from it.
+- [x] **M8-01** (apps/reports/facts.py and `GET /api/projects/{key}/releases/{version}/`. Blockers link to record pages that arrive with their own screens) Readiness per release: Not ready yet if any needs retest, open critical, closed with failed retest, uncovered critical requirement or unfiled failure exists; blockers listed by type with counts, each linking to its record; the panel updates without a reload; "Checking…" while loading and "Couldn't check" blocks sign-off (FR-RPT-01; DATA §9; UX Flow 3).
+- [x] **M8-02** (in the facts builder; shown on the dashboard and the release page) Verified coverage per release, as defined in DATA §9 (the North Star).
+- [x] **M8-03** (`build_facts(release)`; readiness, the dashboard (`GET /api/projects/{key}/summary/`) and the report read from it. F5 will too) Facts builder: the one function that computes run results, defect states, blockers and coverage for a release. F5, the report, and readiness all read from it.
 - [ ] **M8-04** F5 `draft_release_report`: input is facts only; summary, results by area, open defects, risks, readiness statement; every claim cites record IDs. Checks: every number matches the facts, and the readiness line matches the computed value; never recommends shipping when Not ready yet (FR-RPT-02; AI §3 F5).
   - Done when: report accuracy is 100% on the test set.
 - [ ] **M8-05** Report editor with each claim linked to its run or defect, beside the facts used (UX Flow 3 step 3).
-- [ ] **M8-06** Sign-off (owner, admin or QA lead; role re-checked at the action):
+- [x] **M8-06** (`POST .../releases/{version}/sign-off/`; role re-checked and readiness recomputed inside the transaction; the report is stored once, already signed (drafts are computed on read); the database refuses changes to a signed report and to sign-offs. Until F5 (M8-04) the report text is written from the facts) Sign-off (owner, admin or QA lead; role re-checked at the action):
   - The only green button in the product.
   - If Not ready yet, a dialog lists the blockers and the button stays disabled until a reason is typed.
   - On sign-off: report frozen (state signed, `snapshot_at`); `sign_off` row with `readiness_at_signing` and override reason; release set to signed\_off; audited.
   - (FR-RPT-03; DATA §3; UX §8)
 - [ ] **M8-07** PDF export of the signed version (FR-RPT-04).
 - [ ] **M8-08** Read-only share link showing only the signed version; revocable; expires after 30 days by default; downloads through it audited (FR-RPT-04; SEC §4; G-02).
-- [ ] **M8-09** (screen built in web/src/features/releases against the mock API in web/src/mocks; PDF and share link are stubs until M8-07/M8-08) Release screen: blockers on the left, report and sign-off on the right; after sign-off, who signed, when and readiness at that moment (UX §8).
+- [x] **M8-09** (web/src/features/releases, on the real release and sign-off API; retest evidence is uploaded through the file service. PDF and share link are stubs until M8-07 and M8-08) Release screen: blockers on the left, report and sign-off on the right; after sign-off, who signed, when and readiness at that moment (UX §8).
 
 ## M9. Cross-cutting work (runs alongside, finished by week 14)
 

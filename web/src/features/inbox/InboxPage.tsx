@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
-import type { InboxGroup, InboxItem, NextAction } from '../../api/planned'
+import type { InboxGroup, InboxItem, NextAction } from '../../api/records'
 import { useInbox, useUnsnooze } from '../../api/queries'
 import { useHotkeys } from '../../app/hotkeys'
 import { Button } from '../../design/Button'
@@ -103,7 +103,7 @@ export function InboxPage() {
     const i = index++
     return (
       <InboxRow
-        key={item.id}
+        key={`${item.group}:${item.id}`}
         item={item}
         current={i === cursor}
         snoozedView={showSnoozed}
@@ -207,7 +207,11 @@ export function InboxPage() {
 
       <SnoozeDialog item={snoozing} onClose={() => setSnoozing(null)} />
       <RetestDialog
-        defect={retesting ? { displayId: retesting.display_id, title: retesting.title } : null}
+        defect={
+          retesting
+            ? { projectKey: retesting.project_key, displayId: retesting.display_id, title: retesting.title }
+            : null
+        }
         onClose={() => setRetesting(null)}
       />
     </div>

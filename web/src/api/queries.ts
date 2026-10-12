@@ -1,6 +1,6 @@
 import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, api, getCurrentOrg } from './client'
-import type { Inbox, ProjectSummary, ReleaseDetail } from './planned'
+import type { Inbox, ProjectSummary, ReleaseDetail } from './records'
 import type { components } from './schema'
 
 export type Me = components['schemas']['Me']
@@ -81,13 +81,62 @@ export function useUnsnooze() {
   })
 }
 
+type UploadStarted = components['schemas']['UploadStarted']
+
+/** Send one evidence file through the file service: ask for a place, send the bytes, confirm. */
+export async function uploadEvidence(projectKey: string, file: File): Promise<string> {
+  const started = await api<UploadStarted>(`/api/projects/${encodeURIComponent(projectKey)}/files/`, {
+    method: 'POST',
+    body: { kind: 'evidence', name: file.name, size: file.size },
+  })
+  const { method, url, fields, headers } = started.upload
+  let body: BodyInit = file
+  if (method === 'POST') {
+    // Object storage takes a form post: its signed fields first, the file last.
+    const form = new FormData()
+    for (const [name, value] of Object.entries(fields)) form.append(name, value)
+    form.append('file', file)
+    body = form
+  }
+  const sent = await fetch(url, { method, headers: method === 'POST' ? undefined : headers, body })
+  if (!sent.ok) throw new ApiError(sent.status, null, 'upload')
+  await api(`/api/files/${started.file.id}/complete/`, { method: 'POST' })
+  return started.file.id
+}
+
+export type RetestInput = {
+  projectKey: string
+  displayId: string
+  outcome: 'passed' | 'failed'
+  files: File[]
+  /** Called as each file starts and finishes, for the per-file progress lines. */
+  onProgress?: (index: number, state: 'uploading' | 'attached') => void
+}
+
 export function useRetest() {
   const invalidate = useInvalidateWork()
   return useMutation({
-    mutationFn: ({ displayId, outcome, evidence }: { displayId: string; outcome: 'passed' | 'failed'; evidence: string[] }) =>
-      api(`/api/defects/${encodeURIComponent(displayId)}/retests/`, { method: 'POST', body: { outcome, evidence } }),
+    mutationFn: async ({ projectKey, displayId, outcome, files, onProgress }: RetestInput) => {
+      const ids: string[] = []
+      for (const [index, file] of files.entries()) {
+        onProgress?.(index, 'uploading')
+        ids.push(await uploadEvidence(projectKey, file))
+        onProgress?.(index, 'attached')
+      }
+      return api(
+        `/api/projects/${encodeURIComponent(projectKey)}/defects/${encodeURIComponent(displayId)}/retests/`,
+        { method: 'POST', body: { outcome, evidence_file_ids: ids } },
+      )
+    },
     onSuccess: invalidate,
   })
+}
+
+/** The server's own words for a refused request, when it gave any. */
+export function serverMessage(error: unknown): string | null {
+  if (!(error instanceof ApiError) || !error.body || typeof error.body !== 'object') return null
+  const detail = (error.body as { detail?: unknown }).detail
+  return typeof detail === 'string' ? detail : null
 }
 
 export function useSignOff(key: string, version: string) {

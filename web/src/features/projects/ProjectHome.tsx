@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router'
-import type { Coverage, OpenWorkRow, ProjectSummary } from '../../api/planned'
+import type { Coverage, OpenWorkRow, ProjectSummary } from '../../api/records'
 import { useProjects, useProjectSummary } from '../../api/queries'
 import { Button } from '../../design/Button'
 import { IdTag } from '../../design/IdTag'

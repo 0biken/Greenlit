@@ -69,13 +69,12 @@ import re as _re  # noqa: E402
 import struct  # noqa: E402
 import time  # noqa: E402
 from base64 import b32decode  # noqa: E402
+from datetime import timedelta  # noqa: E402
 from urllib.parse import unquote  # noqa: E402
 
-from datetime import timedelta  # noqa: E402
-
 from django.core import mail  # noqa: E402
-from django.utils import timezone  # noqa: E402
 from django.test import Client  # noqa: E402
+from django.utils import timezone  # noqa: E402
 
 AUTH_BASE = "/_allauth/browser/v1"
 GOOD_PASSWORD = "correct horse battery staple"

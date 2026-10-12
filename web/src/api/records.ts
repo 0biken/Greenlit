@@ -1,0 +1,26 @@
+// The records behind the Inbox, the project dashboard and the release page, as the API returns
+// them. Everything here is an alias of a generated type (`pnpm gen:api` → schema.d.ts), so a
+// change to an endpoint shows up as a type error in the screen that uses it.
+
+import type { Status } from '../design/StatusChip'
+import type { components } from './schema'
+
+type S = components['schemas']
+
+/** FR-INB-01 groups, in the order the Inbox shows them. */
+export type InboxGroup = S['GroupEnum']
+export type NextAction = S['NextActionEnum']
+/** `status` is one of the product's status words, so the chip can draw its mark. */
+export type InboxItem = Omit<S['InboxItem'], 'status'> & { status: Status }
+export type Inbox = Omit<S['Inbox'], 'items'> & { items: InboxItem[] }
+
+export type Readiness = S['ReadinessEnum']
+export type BlockerType = S['TypeEnum']
+export type Blocker = S['Blocker']
+export type Coverage = S['Coverage']
+export type SignOff = S['SignOff']
+export type ReleaseDetail = S['ReleaseDetail']
+
+export type ActivityLine = S['Activity']
+export type OpenWorkRow = S['OpenWork']
+export type ProjectSummary = S['ProjectSummary']

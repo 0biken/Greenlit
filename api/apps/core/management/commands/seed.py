@@ -1,6 +1,8 @@
-"""Seed a local database: two organisations, members of every role, and projects (TASKS M1-20).
+"""Seed a local database: two organisations, members of every role, projects, and sample
+records for each module that exists (TASKS M1-20).
 
-Run with the owner role (see CLAUDE.md). Safe to run again: everything is get-or-create.
+Run with the owner role (see CLAUDE.md). Safe to run again: accounts and projects are
+get-or-create, and a project's sample records are added only once.
 Karma Groups is the default organisation; Globex is the second tenant the isolation work needs.
 """
 
@@ -9,7 +11,8 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import connection, transaction
 
-from apps.core.models import Membership, MembershipStatus, Project, Role
+from apps.core.management.commands import _seed_records as records
+from apps.core.models import Membership, MembershipStatus, Project, ProjectMember, Role
 from apps.core.services import ServiceError, create_organisation
 from apps.core.tenancy import org_scope
 
@@ -25,7 +28,7 @@ KARMA_MEMBERS = [
     ("dev", "Femi Adeyemi", Role.DEVELOPER),
     ("viewer", "Tunde Bello", Role.VIEWER),
 ]
-# Keys match the mock layer in web/src/mocks, so the dashboards line up with real projects.
+# The same keys as the sample data in web/src/mocks (used by `pnpm dev:mock`).
 KARMA_PROJECTS = [
     ("HUBE", "Hube checkout", "Hube Retail"),
     ("KOLA", "Kola banking app", "Kola Finance"),
@@ -76,28 +79,44 @@ class Command(BaseCommand):
                         user=owner,
                         defaults={"role": Role.OWNER, "status": MembershipStatus.ACTIVE},
                     )
+                    people = {"owner": owner}
                     for local, name, role in KARMA_MEMBERS:
                         user = _ensure_user(f"{local}@{domain}", name)
+                        people[local] = user
                         Membership.objects.get_or_create(
                             org_id=karma_id,
                             user=user,
                             defaults={"role": role, "status": MembershipStatus.ACTIVE},
                         )
+                    projects = {}
                     for key, name, client in KARMA_PROJECTS:
-                        Project.objects.get_or_create(
+                        projects[key], _ = Project.objects.get_or_create(
                             org_id=karma_id, key=key, defaults={"name": name, "client_name": client}
                         )
+                        # Owners and admins see every project; everyone else needs a row here.
+                        for user in people.values():
+                            ProjectMember.objects.get_or_create(
+                                org_id=karma_id, project=projects[key], user=user
+                            )
+                    lead, tester, dev = people["lead"], people["qa"], people["dev"]
+                    added = [
+                        records.seed_hube(projects["HUBE"], lead, tester, dev),
+                        records.seed_kola(projects["KOLA"], lead, tester, dev),
+                    ]  # MARA stays empty, to show a project's first visit
+                    if any(added):
+                        self.stdout.write("Added sample records to Karma Groups.")
 
             globex_owner = _ensure_user("scorpio@globex.example", "Hank Scorpio")
             globex_id = _org_id(globex_owner, "Globex Corporation", "globex")
             if globex_id:
                 with org_scope(globex_id, globex_owner.pk):
-                    Project.objects.get_or_create(
+                    arcturus, _ = Project.objects.get_or_create(
                         org_id=globex_id, key="ARC", defaults={"name": "Project Arcturus"}
                     )
+                    records.seed_small(arcturus, globex_owner)
 
         self.stdout.write(self.style.SUCCESS("Database seeded."))
         self.stdout.write(
-            f"Sign in as owner@{domain} (or admin@, lead@, qa@, dev@, viewer@) "
-            f"with password {PASSWORD}."
+            f"Sign in as qa@{domain} or lead@{domain} (also dev@, viewer@, and owner@ or "
+            f"admin@, who must set up two-step verification first). Password: {PASSWORD}"
         )

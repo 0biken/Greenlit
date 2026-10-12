@@ -28,10 +28,10 @@ from apps.core.models import (
     User,
 )
 from apps.core.policy import can
+from apps.core.tenancy import org_scope
 from apps.defects.status import create_defect, set_tracker_status
 from apps.requirements.services import create_requirement
 from apps.runs.services import create_release
-from apps.core.tenancy import org_scope
 from tests.support import HANDLED, api_endpoints, declared, stored_file, url_for
 
 pytestmark = pytest.mark.django_db

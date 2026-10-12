@@ -54,6 +54,7 @@ class RunFacts:
     failed: int
     blocked: int
     not_run: int
+    failed_filed: int = 0  # failed results that have a defect filed against them
     failed_cases: list[str] = field(default_factory=list)
     filed_defects: list[str] = field(default_factory=list)
 
@@ -231,6 +232,9 @@ def build_facts(release: Release) -> Facts:
                 failed=count[Outcome.FAILED],
                 blocked=count[Outcome.BLOCKED],
                 not_run=count[Outcome.NOT_RUN],
+                failed_filed=len(
+                    {d.found_in_result_id for d in defects} & {r.pk for r in failed_rs}
+                ),
                 failed_cases=[
                     format_display_id(CounterKind.TEST_CASE, r.case_revision.test_case.display_no)
                     for r in failed_rs

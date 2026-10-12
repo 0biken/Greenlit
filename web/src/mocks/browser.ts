@@ -1,13 +1,11 @@
 import { setupWorker } from 'msw/browser'
-import { backendHandlers, plannedHandlers } from './handlers'
+import { backendHandlers, sampleHandlers } from './handlers'
 
-// VITE_MOCKS=planned (default in development): mock only endpoints not built yet; everything
-//   else goes through the Vite proxy to Django.
-// VITE_MOCKS=all: also stand in for sign-in and the existing API, to preview with no backend.
-// VITE_MOCKS=off: no mocks at all.
+// Normal development talks to the real API through the Vite proxy: nothing is mocked.
+// `pnpm dev:mock` (VITE_MOCKS=all) serves sample data for every endpoint, sign-in included, so
+// the screens can be previewed with no backend running.
 export async function startMocks() {
-  const mode = (import.meta.env.VITE_MOCKS as string | undefined) ?? 'planned'
-  if (mode === 'off') return
-  const handlers = mode === 'all' ? [...plannedHandlers, ...backendHandlers] : plannedHandlers
+  if (import.meta.env.VITE_MOCKS !== 'all') return
+  const handlers = [...sampleHandlers, ...backendHandlers]
   await setupWorker(...handlers).start({ onUnhandledFrame: 'bypass', quiet: true })
 }

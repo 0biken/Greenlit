@@ -1,23 +1,24 @@
 import { useState, type FormEvent } from 'react'
-import { useRetest } from '../../api/queries'
+import { serverMessage, useRetest } from '../../api/queries'
 import { Button } from '../../design/Button'
 import { Mark } from '../../design/Mark'
 import { Dialog, DialogClose } from '../../design/overlays'
 
 // FR-DEF-03 / UX Flow 2: record a retest. Evidence is required for a pass and for a fail.
 // A pass makes the defect Verified; a fail makes it Retest failed and sends it back.
-// The file goes through apps/files once M5 lands; the mock records only its name.
+// Each file is uploaded through the file service first; the retest then names their IDs.
 
 export function RetestDialog({
   defect,
   onClose,
 }: {
-  defect: { displayId: string; title: string } | null
+  defect: { projectKey: string; displayId: string; title: string } | null
   onClose: () => void
 }) {
   const retest = useRetest()
   const [outcome, setOutcome] = useState<'passed' | 'failed' | null>(null)
   const [files, setFiles] = useState<File[]>([])
+  const [progress, setProgress] = useState<Record<number, 'uploading' | 'attached'>>({})
   // Keep showing the last defect while the dialog fades out.
   const [shown, setShown] = useState(defect)
   if (defect && defect !== shown) setShown(defect)
@@ -25,13 +26,25 @@ export function RetestDialog({
   function reset() {
     setOutcome(null)
     setFiles([])
+    setProgress({})
     retest.reset()
   }
 
   async function submit(e: FormEvent) {
     e.preventDefault()
     if (!defect || !outcome || !files.length) return
-    await retest.mutateAsync({ displayId: defect.displayId, outcome, evidence: files.map((f) => f.name) })
+    setProgress({})
+    try {
+      await retest.mutateAsync({
+        projectKey: defect.projectKey,
+        displayId: defect.displayId,
+        outcome,
+        files,
+        onProgress: (index, state) => setProgress((p) => ({ ...p, [index]: state })),
+      })
+    } catch {
+      return // the message is shown from retest.error
+    }
     reset()
     onClose()
   }
@@ -78,7 +91,11 @@ export function RetestDialog({
               accept="image/*,video/*,.pdf,.txt,.log,.har"
               capture="environment"
               multiple
-              onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+              disabled={retest.isPending}
+              onChange={(e) => {
+                setFiles(Array.from(e.target.files ?? []))
+                setProgress({})
+              }}
             />
             {files.length ? (
               <span>
@@ -92,7 +109,23 @@ export function RetestDialog({
           </label>
         </div>
 
-        {retest.isError ? <p className="field-error">Couldn't save the retest. Try again.</p> : null}
+        {retest.isPending || Object.keys(progress).length ? (
+          <ul className="upload-list" aria-live="polite">
+            {files.map((f, i) => (
+              <li key={f.name + i}>
+                <span className="upload-name">{f.name}</span>
+                <span className="faint">
+                  {progress[i] === 'attached' ? 'Attached' : progress[i] === 'uploading' ? 'Uploading…' : 'Waiting'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {retest.isError ? (
+          <p className="field-error" role="alert">
+            {serverMessage(retest.error) ?? "Couldn't save the retest. Try again."}
+          </p>
+        ) : null}
         <div className="dialog-actions">
           <DialogClose asChild>
             <Button variant="quiet">Cancel</Button>

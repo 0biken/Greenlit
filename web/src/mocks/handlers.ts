@@ -1,5 +1,5 @@
 import { delay, http, HttpResponse } from 'msw'
-import type { InboxItem, ReleaseDetail } from '../api/planned'
+import type { InboxItem, ReleaseDetail } from '../api/records'
 import {
   HUBE_BLOCKERS,
   INBOX_ITEMS,
@@ -19,8 +19,8 @@ let signOff: ReleaseDetail['sign_off'] = null
 
 const wait = () => delay(import.meta.env.MODE === 'test' ? 0 : 280 + Math.random() * 220)
 
-/** Endpoints that are planned but not built yet (M5, M6, M8). Always mocked in development. */
-export const plannedHandlers = [
+/** Sample versions of the Inbox, dashboard, release, retest and sign-off endpoints. */
+export const sampleHandlers = [
   http.get('/api/inbox/', async ({ request }) => {
     await wait()
     const snoozed = new URL(request.url).searchParams.get('snoozed') === '1'
@@ -45,10 +45,15 @@ export const plannedHandlers = [
   }),
 
   // M5-05: a retest with evidence. Passed gives Verified; failed gives Retest failed.
-  http.post('/api/defects/:displayId/retests/', async ({ params, request }) => {
+  http.post('/api/projects/:key/defects/:displayId/retests/', async ({ params, request }) => {
     await wait()
-    const { outcome, evidence } = (await request.json()) as { outcome: 'passed' | 'failed'; evidence: string[] }
-    if (!evidence?.length) return HttpResponse.json({ evidence: ['Attach evidence.'] }, { status: 400 })
+    const { outcome, evidence_file_ids } = (await request.json()) as {
+      outcome: 'passed' | 'failed'
+      evidence_file_ids: string[]
+    }
+    if (!evidence_file_ids?.length) {
+      return HttpResponse.json({ detail: 'Attach evidence: a screenshot, recording or log.', code: 'evidence' }, { status: 400 })
+    }
     const id = String(params.displayId).toUpperCase()
     if (outcome === 'passed') {
       items = items.filter((i) => i.display_id !== id)
@@ -59,7 +64,7 @@ export const plannedHandlers = [
       )
       blockers = blockers.map((b) => (b.display_id === id ? { ...b, type: 'closed_failed_retest', age_days: 0 } : b))
     }
-    return HttpResponse.json({ display_id: id, outcome })
+    return HttpResponse.json({ display_id: id, outcome }, { status: 201 })
   }),
 
   http.get('/api/projects/:key/summary/', async ({ params }) => {
@@ -110,6 +115,22 @@ export const plannedHandlers = [
 
 /** Stand-ins for endpoints that do exist, for previewing the UI with no backend (VITE_MOCKS=all). */
 export const backendHandlers = [
+  http.post('/api/projects/:key/files/', async ({ request }) => {
+    const { name, size } = (await request.json()) as { name: string; size: number }
+    const id = crypto.randomUUID()
+    return HttpResponse.json(
+      {
+        file: { id, kind: 'evidence', name, size_bytes: size, state: 'pending' },
+        upload: { method: 'PUT', url: `/files/local/upload/${id}/`, fields: {}, headers: {}, expires_at: new Date().toISOString() },
+      },
+      { status: 201 },
+    )
+  }),
+  http.put('/files/local/upload/:token/', async () => {
+    await wait()
+    return new HttpResponse(null, { status: 204 })
+  }),
+  http.post('/api/files/:id/complete/', () => HttpResponse.json({ state: 'scanning' }, { status: 202 })),
   http.get('/_allauth/browser/v1/config', () => HttpResponse.json({ status: 200, data: {} })),
   http.get('/_allauth/browser/v1/auth/session', () =>
     HttpResponse.json({ status: 200, data: { user: { email: ME.email } }, meta: { is_authenticated: true } }),

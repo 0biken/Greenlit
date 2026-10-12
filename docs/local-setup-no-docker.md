@@ -70,6 +70,26 @@ pnpm install
 pnpm dev
 ```
 
+## 4. Sample data and logins
+
+```bash
+cd api
+DATABASE_URL=postgres://greenlit_owner:greenlit_owner@localhost:5432/greenlit ./.venv/Scripts/python manage.py seed
+```
+
+This creates the organisation Karma Groups with one person per role, and sample records. It is safe to run again. Every password is `password1234`.
+
+| Sign in as | You should see |
+| --- | --- |
+| `qa@karmagroups.example` (QA engineer) | An Inbox with a critical item on top, fixes waiting for a retest, a failure nobody filed and a stale test |
+| `lead@karmagroups.example` (QA lead) | The critical item, the oldest fix, the stale test and the requirements without tests; can sign off a release |
+| `dev@` and `viewer@` | An empty Inbox; `dev@` can mark defects fixed |
+| `owner@` and `admin@` | The same as the lead, after setting up two-step verification once |
+
+Projects: **HUBE** (release 2.4.1, not ready yet), **KOLA** (release 5.0.0) and **MARA** (empty, to show a project's first visit). How the numbers are worked out is in [derived-states.md](derived-states.md).
+
+To look at the screens with no backend at all, run `pnpm dev:mock` in `web/`: it serves sample data for every endpoint, sign-in included.
+
 ## What is skipped, and when you need it
 
 | Skipped | Needed for |

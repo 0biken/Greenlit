@@ -9,7 +9,7 @@ import type {
   InboxItem,
   ProjectSummary,
   ReleaseDetail,
-} from '../api/planned'
+} from '../api/records'
 
 const DAY = 86_400_000
 export const daysAgo = (n: number, hour = 10, minute = 0) => {

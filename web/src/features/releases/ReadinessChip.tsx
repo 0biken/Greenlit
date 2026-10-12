@@ -1,4 +1,4 @@
-import type { Readiness } from '../../api/planned'
+import type { Readiness } from '../../api/records'
 import { Mark } from '../../design/Mark'
 
 // Readiness is Ready or Not ready yet (vocabulary, guide 11). Ready is one of the few green

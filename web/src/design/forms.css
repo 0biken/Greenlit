@@ -107,3 +107,23 @@ fieldset {
   outline-offset: 2px;
 }
 
+
+.upload-list {
+  display: grid;
+  padding: 0;
+  list-style: none;
+  border-top: var(--hairline);
+  font-size: 13.5px;
+}
+.upload-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: var(--hairline);
+}
+.upload-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

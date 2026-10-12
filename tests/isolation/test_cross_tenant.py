@@ -298,3 +298,53 @@ def test_alpha_cannot_change_or_remove_bravos_people_invitations_or_project_memb
         assert ProjectMember.objects.filter(user=world.bravo_engineer).exists()
     with org_scope(world.alpha.id):
         assert not ProjectMember.objects.filter(user=world.bravo_engineer).exists()
+
+
+def test_alpha_cannot_act_on_bravos_defects_or_inbox_items_under_its_own_project(world):
+    """The new write routes, called by Alpha's owner under Alpha's own project key but with
+    Bravo's record IDs: every one is not found, and Bravo's records do not change."""
+    from apps.defects.models import Defect, Retest
+    from apps.inbox.models import Snooze
+
+    bravo = world.bravo_spine
+    as_app_role()
+    client = client_for(world.alpha_owner)
+    headers = {"X-Org": "alpha-iso"}
+    defect_id = str(bravo["defect"].pk)
+    calls = [
+        (f"/api/projects/shared/defects/{defect_id}/fixed/", {}),
+        (
+            f"/api/projects/shared/defects/{defect_id}/retests/",
+            {"outcome": "passed", "evidence_file_ids": [str(world.alpha_file.id)]},
+        ),
+        (
+            f"/api/inbox/requirement.{bravo['requirement'].pk}/snooze/",
+            {"reason": "x", "until": "2099-01-01T00:00:00Z"},
+        ),
+        (f"/api/inbox/defect.{defect_id}/unsnooze/", {}),
+    ]
+    for url, body in calls:
+        response = client.post(url, data=body, content_type="application/json", headers=headers)
+        assert response.status_code == 404, f"POST {url} answered {response.status_code}"
+
+    # Bravo's evidence file cannot be attached to one of Alpha's own retests either.
+    own = world.alpha_spine["defect"]
+    response = client.post(
+        f"/api/projects/shared/defects/{own.pk}/fixed/",
+        data={},
+        content_type="application/json",
+        headers=headers,
+    )
+    assert response.status_code == 200
+    response = client.post(
+        f"/api/projects/shared/defects/{own.pk}/retests/",
+        data={"outcome": "failed", "evidence_file_ids": [str(world.bravo_file.id)]},
+        content_type="application/json",
+        headers=headers,
+    )
+    assert response.status_code == 400
+
+    set_scope(world.bravo.id, world.bravo_owner.pk)
+    assert Retest.objects.filter(defect_id=bravo["defect"].pk).count() == 1
+    assert Defect.objects.get(pk=bravo["defect"].pk).qa_status == bravo["defect"].qa_status
+    assert Snooze.objects.count() == 1

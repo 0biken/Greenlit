@@ -13,6 +13,8 @@ export default defineConfig(({ command }) => ({
     proxy: {
       '/api': { target: API, changeOrigin: false },
       '/_allauth': { target: API, changeOrigin: false },
+      // Local stand-in for the storage bucket (uploads and downloads in development).
+      '/files': { target: API, changeOrigin: false },
     },
   },
 }))

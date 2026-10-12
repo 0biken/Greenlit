@@ -42,9 +42,11 @@ def report_body(facts: Facts) -> dict:
     for run in facts.runs:
         text = f"{run.plan}: {run.passed} of {run.total} cases passed in {run.display_id}"
         if run.failed:
-            filed = len(run.filed_defects)
             text += f"; {run.failed} failed"
-            text += " and were filed" if filed == run.failed else f", {filed} filed"
+            if run.failed_filed == run.failed:
+                text += " and was filed" if run.failed == 1 else " and were filed"
+            else:
+                text += f", {run.failed_filed} filed"
         if run.blocked:
             text += f"; {run.blocked} blocked"
         if run.not_run:

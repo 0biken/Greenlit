@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import type { InboxItem } from '../../api/planned'
+import type { InboxItem } from '../../api/records'
 import { useSnooze } from '../../api/queries'
 import { Button } from '../../design/Button'
 import { Dialog, DialogClose } from '../../design/overlays'
