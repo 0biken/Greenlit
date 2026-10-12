@@ -15,11 +15,11 @@ The two escalation times are per project (`retest_escalation_hours` in the proje
 
 ## Told once
 
-Every notification is first written to `inbox.notification`, which is unique per person, level, record and cycle. If the row already exists, nothing is sent. That is what makes the jobs safe to run twice, to overlap, or to be retried.
+Every notification is written to `inbox.notification`, which is unique per person, level, record and cycle. If the row already exists, nothing is sent. That is what makes the jobs safe to run twice, to overlap, or to be retried.
 
 `cycle` separates one wait from the next. For a defect it is when the current wait began, so a defect that fails its retest, is fixed again and waits again is reminded again. For a digest it is the person's local date.
 
-An email is sent when the surrounding work commits, after its row is written. If sending fails after that, it is not retried that day: at most once, rather than possibly twice.
+A row and its email succeed or fail together. If the email cannot be sent, the row is rolled back and the job fails, so the job's retry (or the next scheduled run) sends it. A person may very rarely get the same email twice, if the send worked but saving the row did not; they are never recorded as told when they were not.
 
 ## What a digest contains
 
@@ -44,4 +44,4 @@ Both run through the job framework (docs/jobs.md): one organisation at a time, i
 - **The schedule needs Redis, a worker and `celery beat`.** Without them (the local setup has none), nothing runs on a timer; the job that closing a defect queues runs inline.
 - A person who belongs to two organisations gets one digest per organisation, because each job works on one organisation.
 - There is no in-app notification list yet; `read_at` is unused.
-- Links in emails to test cases and requirements lead to screens that are not built yet.
+- Links in emails to test cases and requirements lead to screens that are not built yet. A failure found in a run links to the run, which is.

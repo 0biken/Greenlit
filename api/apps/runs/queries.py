@@ -5,7 +5,7 @@ from collections import defaultdict
 from django.db.models import Count
 
 from apps.core.choices import ReviewState
-from apps.core.models import CounterKind, Project
+from apps.core.models import CounterKind, Project, display_name
 from apps.core.numbering import format_display_id
 from apps.defects import status as defect_status
 from apps.defects.models import Defect
@@ -21,8 +21,29 @@ from apps.runs.models import (
 )
 
 
-def _name(user) -> str | None:
-    return (user.name or user.email) if user else None
+def evidence_row(evidence: Evidence) -> dict:
+    return {
+        "display_id": format_display_id(CounterKind.EVIDENCE, evidence.display_no),
+        "file_id": evidence.file_id,
+        "name": evidence.file.original_name,
+        "mime": evidence.mime,
+        "state": evidence.file.state,
+    }
+
+
+def evidence_for(target_type: str, target_ids: list) -> dict:
+    """Evidence for several records at once: {target_id: [evidence row, ...]}."""
+    by_evidence: dict = defaultdict(list)
+    for link in EvidenceLink.objects.filter(target_type=target_type, target_id__in=target_ids):
+        by_evidence[link.evidence_id].append(link.target_id)
+    out: dict = {target_id: [] for target_id in target_ids}
+    for ev in (
+        Evidence.objects.filter(pk__in=by_evidence).select_related("file").order_by("display_no")
+    ):
+        row = evidence_row(ev)
+        for target_id in by_evidence[ev.pk]:
+            out[target_id].append(row)
+    return out
 
 
 def run_id(run: TestRun) -> str:
@@ -83,7 +104,7 @@ def run_row(run: TestRun, results: list[CaseResult]) -> dict:
         "build": run.build,
         "environment": run.environment,
         "state": run.state,
-        "started_by": _name(run.created_by),
+        "started_by": display_name(run.created_by),
         "started_at": run.created_at,
         "total": len(results),
         **_counts(results),
@@ -115,24 +136,7 @@ def run_detail(run: TestRun) -> dict:
         key=lambda r: positions.get(r.case_revision_id, 0),
     )
     ids = [r.pk for r in results]
-    evidence: dict = defaultdict(list)
-    links = EvidenceLink.objects.filter(target_type=EvidenceTarget.CASE_RESULT, target_id__in=ids)
-    by_evidence: dict = defaultdict(list)
-    for link in links:
-        by_evidence[link.evidence_id].append(link.target_id)
-    for ev in (
-        Evidence.objects.filter(pk__in=by_evidence).select_related("file").order_by("display_no")
-    ):
-        for target_id in by_evidence[ev.pk]:
-            evidence[target_id].append(
-                {
-                    "display_id": format_display_id(CounterKind.EVIDENCE, ev.display_no),
-                    "file_id": ev.file_id,
-                    "name": ev.file.original_name,
-                    "mime": ev.mime,
-                    "state": ev.file.state,
-                }
-            )
+    evidence = evidence_for(EvidenceTarget.CASE_RESULT, ids)
     defects: dict = defaultdict(list)
     for d in Defect.objects.filter(found_in_result_id__in=ids).order_by("display_no"):
         defects[d.found_in_result_id].append(
@@ -158,7 +162,7 @@ def run_detail(run: TestRun) -> dict:
                 "priority": r.case_revision.priority,
                 "outcome": r.outcome,
                 "note": r.note,
-                "recorded_by": _name(r.recorded_by),
+                "recorded_by": display_name(r.recorded_by),
                 "recorded_at": r.recorded_at,
                 "evidence": evidence[r.pk],
                 "defects": defects[r.pk],

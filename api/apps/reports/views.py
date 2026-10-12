@@ -9,7 +9,7 @@ from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 
 from apps.core.flags import flag_required
-from apps.core.models import CounterKind
+from apps.core.models import CounterKind, display_name
 from apps.core.numbering import format_display_id
 from apps.core.policy import Action, TokenAccess, project_or_404, requires
 from apps.core.services import ServiceError
@@ -191,7 +191,7 @@ def release_detail_data(release: Release) -> dict:
         "report": report,
         "sign_off": (
             {
-                "by": record.signed_by.name or record.signed_by.email,
+                "by": display_name(record.signed_by),
                 "at": record.signed_at,
                 "readiness": record.readiness_at_signing,
                 "reason": record.override_reason or None,
@@ -268,7 +268,7 @@ def _link_row(link) -> dict:
     return {
         "id": link.pk,
         "state": sharing.state_of(link),
-        "created_by": (link.created_by.name or link.created_by.email) if link.created_by else None,
+        "created_by": display_name(link.created_by),
         "created_at": link.created_at,
         "expires_at": link.expires_at,
     }
@@ -288,7 +288,7 @@ def _signed_pdf(project_name: str, release: Release, report, record: SignOff) ->
         release=release.name,
         report_id=report_id,
         body=report.body,
-        signed_by=record.signed_by.name or record.signed_by.email,
+        signed_by=display_name(record.signed_by) or "",
         signed_at=record.signed_at,
         readiness=record.readiness_at_signing,
         reason=record.override_reason,
@@ -387,14 +387,16 @@ def shared_report(request, token: str):
             "sections": shared.report.body["sections"],
         },
         "sign_off": {
-            "by": shared.sign_off.signed_by.name or shared.sign_off.signed_by.email,
+            "by": display_name(shared.sign_off.signed_by),
             "at": signed_at,
             "readiness": shared.sign_off.readiness_at_signing,
             "reason": shared.sign_off.override_reason or None,
         },
         # Ages are counted to the moment of signing, so the page reads the same every day.
+        # Who owns each blocker is for the team, not for whoever holds the link.
         "blockers": [
-            {**b, "age_days": _age(b["since"], signed_at)} for b in facts.get("blockers", [])
+            {**b, "age_days": _age(b["since"], signed_at), "owner_name": None}
+            for b in facts.get("blockers", [])
         ],
         "coverage": facts.get("coverage", {}),
         "expires_at": shared.link.expires_at,

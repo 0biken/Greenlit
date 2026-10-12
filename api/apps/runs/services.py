@@ -4,7 +4,7 @@ The run screen and its API arrive with the rest of M4; retests and sign-off use 
 """
 
 from collections.abc import Iterable
-from datetime import date
+from datetime import date, timedelta
 from uuid import UUID
 
 from django.db import transaction
@@ -71,29 +71,45 @@ def start_run(
             environment=environment,
             created_by=actor,
         )
-        for pointer in PlanVersionCase.objects.filter(plan_version=plan_version).order_by(
-            "position"
-        ):
-            CaseResult.objects.create(
-                org_id=release.org_id, run=run, case_revision_id=pointer.case_revision_id
+        revisions = (
+            PlanVersionCase.objects.filter(plan_version=plan_version)
+            .order_by("position")
+            .values_list("case_revision_id", flat=True)
+        )
+        # One insert for the whole plan. Each result is a microsecond after the one before, so
+        # ordering by `created_at` still gives the plan's order.
+        CaseResult.objects.bulk_create(
+            CaseResult(
+                org_id=release.org_id,
+                run=run,
+                case_revision_id=revision_id,
+                created_at=run.created_at + timedelta(microseconds=position),
             )
+            for position, revision_id in enumerate(revisions, start=1)
+        )
         audit.record(
             "run.started", "test_run", run.pk, actor=actor, after={"release": release.name}
         )
     return run
 
 
+def _locked(run: TestRun) -> TestRun:
+    """The run as it is now, held until the transaction ends. Recording a result and completing
+    the run both take this first, so neither can slip past the other's check."""
+    return TestRun.objects.select_for_update().get(pk=run.pk)
+
+
 def record_result(result: CaseResult, actor, outcome: str, note: str = "") -> CaseResult:
     """Save a result at once; latest write wins and the old outcome goes to the audit log."""
     if outcome not in Outcome.values:
         raise ServiceError("Choose Passed, Failed, Blocked or Not run.")
-    if result.run.state == RunState.COMPLETE:
-        raise ServiceError(
-            "This run is complete, so its results can no longer change.", code="complete"
-        )
-    if result.outcome == outcome and result.note == note:
-        return result  # a retried save: nothing to do, nothing to audit
     with transaction.atomic():
+        if _locked(result.run).state == RunState.COMPLETE:
+            raise ServiceError(
+                "This run is complete, so its results can no longer change.", code="complete"
+            )
+        if result.outcome == outcome and result.note == note:
+            return result  # a retried save: nothing to do, nothing to audit
         before = result.outcome
         result.outcome = outcome
         result.note = note
@@ -183,9 +199,12 @@ def cancel_release(release: Release, actor) -> Release:
 
 
 def failures_missing_evidence(run: TestRun) -> list[CaseResult]:
-    """Failed results of this run with no evidence attached (FR-RUN-05)."""
+    """Failed results of this run with no usable evidence attached (FR-RUN-05). A file the
+    scan refused (unsafe, or not a type evidence accepts) does not count."""
     linked = EvidenceLink.objects.filter(
-        target_type=EvidenceTarget.CASE_RESULT, target_id=OuterRef("pk")
+        target_type=EvidenceTarget.CASE_RESULT,
+        target_id=OuterRef("pk"),
+        evidence__file__state__in=LINKABLE_FILE_STATES,
     )
     return list(
         CaseResult.objects.filter(run=run, outcome=Outcome.FAILED)
@@ -210,12 +229,13 @@ class RunIncomplete(ServiceError):
 
 def complete_run(run: TestRun, actor) -> TestRun:
     """A run cannot be marked complete while failed cases have no evidence (FR-RUN-05)."""
-    if run.state == RunState.COMPLETE:
-        return run
-    missing = failures_missing_evidence(run)
-    if missing:
-        raise RunIncomplete(missing)
     with transaction.atomic():
+        if _locked(run).state == RunState.COMPLETE:
+            run.state = RunState.COMPLETE
+            return run
+        missing = failures_missing_evidence(run)
+        if missing:
+            raise RunIncomplete(missing)
         run.state = RunState.COMPLETE
         run.save(update_fields=["state", "updated_at"])
         audit.record(

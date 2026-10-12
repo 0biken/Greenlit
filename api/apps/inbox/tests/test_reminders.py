@@ -208,7 +208,7 @@ def test_the_digest_lists_ids_titles_and_links_and_never_the_text(
         type(requirement).objects.filter(pk=requirement.pk).update(text="SECRET-REQUIREMENT-TEXT")
         d = lab.defect("Payment times out")
         type(d).objects.filter(pk=d.pk).update(
-            steps="SECRET-STEPS", actual="SECRET-ACTUAL", created_at=days_ago(9)
+            steps="SECRET-STEPS", actual="SECRET-ACTUAL", created_at=at(7, 5) - timedelta(days=9)
         )
     assert digest(lab, at(7, 5), django_capture_on_commit_callbacks) >= 1
     message = next(m for m in mail.outbox if m.to == [lab.lead.email])
@@ -239,3 +239,53 @@ def test_an_unknown_time_zone_falls_back_to_utc(lab, django_capture_on_commit_ca
     lab.set(lab.defect(), "fixed")
     set_zone(lab.tester, "Mars/Olympus")
     assert digest(lab, at(7, 5), django_capture_on_commit_callbacks) == 1
+
+
+# --- When the email cannot be sent -
+
+
+def test_an_alert_that_could_not_be_sent_is_sent_by_the_retry(lab, monkeypatch):
+    from apps.inbox import reminders
+
+    d = lab.retest(lab.set(lab.defect(), "fixed"), "failed")
+    lab.set(d, "closed")
+    real = reminders.send_mail
+
+    def provider_down(*args, **kwargs):
+        raise ConnectionError("provider down")
+
+    monkeypatch.setattr(reminders, "send_mail", provider_down)
+    with pytest.raises(ConnectionError):
+        remind(lab)
+    assert told(lab) == [] and mail.outbox == []  # nobody is recorded as told
+
+    monkeypatch.setattr(reminders, "send_mail", real)
+    assert remind(lab)["critical"] == 4
+    assert len(mail.outbox) == 4
+
+
+def test_a_digest_that_could_not_be_sent_is_sent_by_the_retry(lab, monkeypatch):
+    from apps.inbox import reminders
+
+    lab.set(lab.defect(), "fixed")
+    real = reminders.send_mail
+    monkeypatch.setattr(
+        reminders, "send_mail", lambda *a, **k: (_ for _ in ()).throw(ConnectionError())
+    )
+    with pytest.raises(ConnectionError), lab.scope():
+        run_digest(lab.id, at(7, 5))
+    monkeypatch.setattr(reminders, "send_mail", real)
+    with lab.scope():
+        assert run_digest(lab.id, at(7, 20)) == 1
+    assert len(mail.outbox) == 1
+
+
+def test_a_failure_in_a_run_links_to_the_run(lab):
+    requirement = lab.requirement()
+    _, version, _ = lab.plan(cases=[("Pays by card", [requirement])])
+    lab.run(lab.release(), version, ["failed"])
+    with lab.scope():
+        run_digest(lab.id, at(7, 5))
+    message = next(m for m in mail.outbox if m.to == [lab.tester.email])
+    assert "LAB-TC-0001  Pays by card" in message.body
+    assert "/lab/runs/1" in message.body and "/lab/cases/" not in message.body

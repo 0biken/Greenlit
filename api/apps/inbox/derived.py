@@ -18,6 +18,7 @@ from apps.defects.models import Defect, QaStatus, TrackerStatus
 from apps.plans.models import CaseRequirement, PlanVersionCase, TestPlan
 from apps.requirements.models import Requirement
 from apps.runs.models import CaseResult, EvidenceLink, EvidenceTarget, Outcome
+from apps.runs.services import LINKABLE_FILE_STATES
 
 TERMINAL_QA = (QaStatus.VERIFIED, QaStatus.WONT_FIX, QaStatus.DEFERRED)
 
@@ -148,9 +149,11 @@ def unfiled_failures(projects: QuerySet[Project]) -> list[Item]:
 
 
 def missing_evidence(projects: QuerySet[Project]) -> list[Item]:
-    """A failed result with no evidence linked."""
+    """A failed result with no usable evidence linked (a file the scan refused does not count)."""
     linked = EvidenceLink.objects.filter(
-        target_type=EvidenceTarget.CASE_RESULT, target_id=OuterRef("pk")
+        target_type=EvidenceTarget.CASE_RESULT,
+        target_id=OuterRef("pk"),
+        evidence__file__state__in=LINKABLE_FILE_STATES,
     )
     rows = _failed_results(projects).filter(~Exists(linked))
     return [_result_item(r, "missing_evidence", "attach_evidence") for r in rows]

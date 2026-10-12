@@ -42,6 +42,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
 
+def display_name(user: "User | None") -> str | None:
+    """How a person is named on screen and in reports: their name, or their email without one."""
+    return (user.name or user.email) if user else None
+
+
 class TenantQuerySet(models.QuerySet):
     def delete(self):
         """Soft delete: records are never hard-deleted in normal use (DATA §1)."""

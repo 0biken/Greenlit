@@ -60,8 +60,10 @@ function RunScreen({ projectKey, run }: { projectKey: string; run: RunDetail }) 
   const [done, setDone] = useState(run.state === 'complete')
   const editable = !done && CAN_TEST.includes(membership.role)
 
-  // What the tester has recorded here, laid over what the server last sent.
-  const [local, setLocal] = useState<Record<string, Pending>>({})
+  // What the tester has recorded here, laid over what the server last sent: first what is
+  // still waiting to be sent, then what this visit has saved. A result the server refused is
+  // in neither, so the case goes back to showing what is actually stored.
+  const [saved, setSaved] = useState<Record<string, Pending>>({})
   const [evidence, setEvidence] = useState<Record<string, EvidenceFile[]>>({})
   const [uploading, setUploading] = useState<Record<string, number>>({})
   const [problem, setProblem] = useState<string | null>(null)
@@ -70,15 +72,16 @@ function RunScreen({ projectKey, run }: { projectKey: string; run: RunDetail }) 
   const rowRefs = useRef<(HTMLLIElement | null)[]>([])
   const fileInput = useRef<HTMLInputElement>(null)
 
-  const outbox = useOutbox(key, run.number, (resultId, saved) => {
+  const outbox = useOutbox(key, run.number, (resultId, value) => {
+    setSaved((s) => ({ ...s, [resultId]: value }))
     const c = run.cases.find((x) => x.result_id === resultId)
-    if (c) setAnnounce(`${c.case} saved as ${BY_ID[saved.outcome].word}.`)
+    if (c) setAnnounce(`${c.case} saved as ${BY_ID[value.outcome].word}.`)
   })
 
   const cases = useMemo(
     () =>
       run.cases.map((c) => {
-        const mine = local[c.result_id] ?? outbox.unsent[c.result_id]
+        const mine = outbox.pending[c.result_id] ?? saved[c.result_id]
         return {
           ...c,
           outcome: mine?.outcome ?? c.outcome,
@@ -86,16 +89,14 @@ function RunScreen({ projectKey, run }: { projectKey: string; run: RunDetail }) 
           evidence: [...c.evidence, ...(evidence[c.result_id] ?? [])],
         }
       }),
-    [run.cases, local, outbox.unsent, evidence],
+    [run.cases, saved, outbox.pending, evidence],
   )
   const current = cases[cursor]
   const counts = Object.fromEntries(OUTCOMES.map((o) => [o.id, cases.filter((c) => c.outcome === o.id).length]))
 
   function setOutcome(outcome: Outcome, note?: string) {
     if (!editable || !current) return
-    const value = { outcome, note: note ?? current.note }
-    setLocal((l) => ({ ...l, [current.result_id]: value }))
-    outbox.record(current.result_id, value)
+    outbox.record(current.result_id, { outcome, note: note ?? current.note })
   }
 
   function move(delta: number) {

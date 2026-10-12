@@ -312,16 +312,7 @@ def result_evidence(request, key: str, run_id: str, result_id: UUID):
         [(EvidenceTarget.CASE_RESULT, target.pk)],
         environment=run.environment,
     )
-    rows = [
-        {
-            "display_id": format_display_id(CounterKind.EVIDENCE, e.display_no),
-            "file_id": e.file_id,
-            "name": e.file.original_name,
-            "mime": e.mime,
-            "state": e.file.state,
-        }
-        for e in made
-    ]
+    rows = [queries.evidence_row(e) for e in made]
     return Response(RunEvidenceSerializer(rows, many=True).data, status=status.HTTP_201_CREATED)
 
 

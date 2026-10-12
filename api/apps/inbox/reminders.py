@@ -4,18 +4,21 @@
 handlers in `jobs.py` call them. What people are told:
 
 - A fix waiting for its retest past the first escalation time (48 hours by default): the
-  owner is reminded, and the item rises to the top of their Inbox.
-- Past the second time (96 hours): the project's leads are told as well.
+  item rises to the top of the owner's Inbox. No email of its own; the digest carries it.
+- Past the second time (96 hours): it appears in the project's leads' Inboxes as well.
 - A defect closed while its retest had failed: owner and leads are told at once, by email.
   This is the one thing that never waits for the digest.
 - The digest: one email a day per person, at 07:00 in their own time zone, only if something
   is open for them. It carries IDs, titles and links, never document text (SEC §10).
 
-Each of these is recorded in `notification` first, and the unique rule there makes sure nobody
-is told the same thing twice, however often the job runs.
+Each of these is recorded in `notification`, and the unique rule there makes sure nobody is
+told the same thing twice, however often the job runs. A record and its email succeed or fail
+together: if the email cannot be sent the record is not kept, and the job's retry sends it.
 """
 
+from collections.abc import Callable
 from datetime import datetime, timedelta
+from functools import partial
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.conf import settings
@@ -46,42 +49,96 @@ KIND_PATH = {"BUG": "bugs", "TC": "cases", "REQ": "requirements"}
 
 
 def _link(item: Item) -> str:
+    base = f"{settings.FRONTEND_URL}/{item.project.key.lower()}"
+    if item.target_type == "case_result" and "run" in item.extra:
+        # A failed result is worked on in its run, not on the test case's own page.
+        return f"{base}/runs/{int(item.extra['run'].rpartition('-')[2])}"
     prefix, _, number = item.display_id.partition("-")
     path = KIND_PATH.get(prefix, "records")
-    return f"{settings.FRONTEND_URL}/{item.project.key.lower()}/{path}/{int(number)}"
+    return f"{base}/{path}/{int(number)}"
 
 
-def _notify_once(user_id, level: str, item: Item, cycle: str, now: datetime) -> bool:
-    """Record that this person was told. False if they already were."""
+def _notify_once(
+    org_id,
+    user_id,
+    level: str,
+    target_type: str,
+    target_id,
+    cycle: str,
+    now: datetime,
+    email: Callable[[], None] | None = None,
+) -> bool:
+    """Record that this person was told, and send `email` with it. False if they already were.
+
+    The row and the email stand or fall together: if sending fails, the row is rolled back and
+    the error goes up to the job, whose retry tells them then. So an alert may rarely arrive
+    twice, but it is never recorded as sent when it was not."""
     try:
         with transaction.atomic():
             Notification.objects.create(
-                org_id=item.project.org_id,
+                org_id=org_id,
                 user_id=user_id,
                 level=level,
-                target_type=item.target_type,
-                target_id=item.target_id,
+                target_type=target_type,
+                target_id=target_id,
                 cycle=cycle,
                 sent_at=now,
             )
+            if email is not None:
+                email()
     except IntegrityError:
         return False
     return True
 
 
-def _leads_on(project: Project, members: list[Membership]) -> list[Membership]:
-    return [
-        m
-        for m in members
-        if m.role in LEADS and visible_projects(Project.objects.filter(pk=project.pk), m).exists()
-    ]
+def _notify_item(user_id, level: str, item: Item, now: datetime, email=None) -> bool:
+    return _notify_once(
+        item.project.org_id,
+        user_id,
+        level,
+        item.target_type,
+        item.target_id,
+        item.since.isoformat(),
+        now,
+        email,
+    )
+
+
+class _Leads:
+    """The leads who can see each project, looked up once per project for a whole pass."""
+
+    def __init__(self, members: list[Membership]):
+        self._leads = [m for m in members if m.role in LEADS]
+        self._by_project: dict = {}
+
+    def on(self, project: Project) -> list[Membership]:
+        if project.pk not in self._by_project:
+            self._by_project[project.pk] = [
+                m
+                for m in self._leads
+                if visible_projects(Project.objects.filter(pk=project.pk), m).exists()
+            ]
+        return self._by_project[project.pk]
 
 
 def _send(to: User, subject: str, lines: list[str]) -> None:
-    body = "\n".join(lines)
-    # Sent when the surrounding work commits, so nobody is emailed about a change that was
-    # rolled back.
-    transaction.on_commit(lambda: send_mail(subject, body, None, [to.email]))
+    send_mail(subject, "\n".join(lines), None, [to.email])
+
+
+def _critical_alert(member: Membership, item: Item) -> None:
+    _send(
+        member.user,
+        f"{item.project.key}-{item.display_id} was closed, but its retest failed",
+        [
+            f"{item.display_id} {item.title}",
+            f"Project: {item.project.name}",
+            "",
+            "It is marked closed in the tracker, but the last retest failed.",
+            "It blocks the release until it is fixed and retested, or a lead decides.",
+            "",
+            _link(item),
+        ],
+    )
 
 
 def run_reminders(org_id, now: datetime | None = None) -> dict[str, int]:
@@ -90,41 +147,30 @@ def run_reminders(org_id, now: datetime | None = None) -> dict[str, int]:
     projects = Project.objects.filter(org_id=org_id)
     members = list(Membership.objects.filter(status=MembershipStatus.ACTIVE).select_related("user"))
     by_user = {str(m.user_id): m for m in members}
+    leads = _Leads(members)
     told = {"48h": 0, "96h": 0, "critical": 0}
 
     for item in derived.needs_retest(projects):
         first, second = project_settings(item.project)["retest_escalation_hours"]
         waited = now - item.since
-        cycle = item.since.isoformat()
         if waited >= timedelta(hours=first) and item.owner_id in by_user:
-            told["48h"] += _notify_once(item.owner_id, NotificationLevel.FIRST, item, cycle, now)
+            told["48h"] += _notify_item(item.owner_id, NotificationLevel.FIRST, item, now)
         if waited >= timedelta(hours=second):
-            for lead in _leads_on(item.project, members):
-                told["96h"] += _notify_once(
-                    lead.user_id, NotificationLevel.SECOND, item, cycle, now
-                )
+            for lead in leads.on(item.project):
+                told["96h"] += _notify_item(lead.user_id, NotificationLevel.SECOND, item, now)
 
     for item in derived.closed_failed_retest(projects):
-        cycle = item.since.isoformat()
-        people = {m.user_id: m for m in _leads_on(item.project, members)}
+        people = {m.user_id: m for m in leads.on(item.project)}
         if item.owner_id in by_user:
             people[by_user[item.owner_id].user_id] = by_user[item.owner_id]
         for member in people.values():
-            if _notify_once(member.user_id, NotificationLevel.CRITICAL, item, cycle, now):
-                told["critical"] += 1
-                _send(
-                    member.user,
-                    f"{item.project.key}-{item.display_id} was closed, but its retest failed",
-                    [
-                        f"{item.display_id} {item.title}",
-                        f"Project: {item.project.name}",
-                        "",
-                        "It is marked closed in the tracker, but the last retest failed.",
-                        "It blocks the release until it is fixed and retested, or a lead decides.",
-                        "",
-                        _link(item),
-                    ],
-                )
+            told["critical"] += _notify_item(
+                member.user_id,
+                NotificationLevel.CRITICAL,
+                item,
+                now,
+                email=partial(_critical_alert, member, item),
+            )
     return told
 
 
@@ -174,21 +220,16 @@ def run_digest(org_id, now: datetime | None = None) -> int:
         if not items:
             continue  # nobody gets an empty digest
         day = local.date().isoformat()
-        try:
-            with transaction.atomic():
-                Notification.objects.create(
-                    org_id=org_id,
-                    user_id=member.user_id,
-                    level=NotificationLevel.DIGEST,
-                    target_type="digest",
-                    target_id=member.user_id,
-                    cycle=day,
-                    sent_at=now,
-                )
-        except IntegrityError:
-            continue  # already sent today
         count = len(items)
         subject = f"Greenlit: {count} {'item needs' if count == 1 else 'items need'} you"
-        _send(member.user, subject, digest_lines(items, now))
-        sent += 1
+        sent += _notify_once(
+            org_id,
+            member.user_id,
+            NotificationLevel.DIGEST,
+            "digest",
+            member.user_id,
+            day,
+            now,
+            email=partial(_send, member.user, subject, digest_lines(items, now)),
+        )
     return sent

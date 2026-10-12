@@ -228,3 +228,12 @@ def test_without_the_token_the_database_shows_no_links_at_all(lab):
         assert cursor.fetchone()[0] == 1
         cursor.execute("SELECT set_config('app.invite_hash', '', true)")
         cursor.execute("RESET ROLE")
+
+
+def test_a_share_link_does_not_name_who_owns_each_blocker(lab):
+    team = lab.call(lab.viewer, "get", f"{REL}/").json()
+    assert [b["owner_name"] for b in team["blockers"]] == ["qa_engineer"]
+    token = lab.link().json()["token"]
+    shared = anonymous(f"/api/shared/{token}/").json()
+    assert [b["display_id"] for b in shared["blockers"]] == ["BUG-1"]
+    assert [b["owner_name"] for b in shared["blockers"]] == [None]

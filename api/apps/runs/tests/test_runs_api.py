@@ -236,3 +236,33 @@ def test_the_run_list_counts_outcomes(lab):
     assert (first["passed"], first["blocked"], first["not_run"], first["total"]) == (1, 1, 1, 3)
     with lab.scope():
         assert CaseResult.objects.count() == 6
+
+
+def test_a_file_the_scan_refused_does_not_count_as_evidence(lab):
+    from apps.files.models import FileState, StoredFile
+
+    run = lab.start().json()
+    one = run["cases"][0]
+    put(lab, run, one, "failed")
+    shot = lab.file()
+    attach(lab, run, one, file=shot)
+    with lab.scope():
+        StoredFile.objects.filter(pk=shot.pk).update(state=FileState.INFECTED)
+
+    refused = lab.call(lab.tester, "post", f"{P}/runs/1/complete/", {})
+    assert refused.status_code == 400 and refused.json()["code"] == "evidence"
+    inbox = lab.call(lab.tester, "get", "/api/inbox/").json()["items"]
+    assert "missing_evidence" in {i["group"] for i in inbox}
+
+    attach(lab, run, one)
+    assert lab.call(lab.tester, "post", f"{P}/runs/1/complete/", {}).status_code == 200
+
+
+def test_results_keep_the_plans_order(lab):
+    run = lab.start().json()
+    assert [c["title"] for c in run["cases"]] == ["Pays by card", "Card declined", "Guest checkout"]
+    with lab.scope():
+        stored = CaseResult.objects.order_by("created_at").values_list(
+            "case_revision__title", flat=True
+        )
+        assert list(stored) == ["Pays by card", "Card declined", "Guest checkout"]

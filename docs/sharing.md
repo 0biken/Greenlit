@@ -24,7 +24,7 @@ Both the PDF and a share link show **the signed version only**: the report body 
 | `POST .../releases/{version}/share-links/` | Owners, admins, QA leads | Optional `days` (1 to 365, default 30). The answer contains the token **once** |
 | `GET .../releases/{version}/share-links/` | Anyone on the project | State (active, expired, revoked), who made it and when. Never a token |
 | `DELETE .../share-links/{id}/` | Owners, admins, QA leads | Revokes at once |
-| `GET /api/shared/{token}/` | Anyone holding the link | The signed report, sign-off, and the blockers and coverage at sign-off |
+| `GET /api/shared/{token}/` | Anyone holding the link | The signed report, sign-off, and the blockers and coverage at sign-off. Blockers come without their owners' names: who is working on what stays with the team |
 
 The web address people pass around is `{FRONTEND_URL}/shared/{token}`, a page that needs no sign-in.
 

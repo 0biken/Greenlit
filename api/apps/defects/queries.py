@@ -3,13 +3,14 @@
 from django.db.models import Case, IntegerField, Q, QuerySet, When
 from django.utils import timezone
 
-from apps.core.models import AuditEvent, CounterKind, Membership, Project
+from apps.core.models import AuditEvent, CounterKind, Membership, Project, display_name
 from apps.core.numbering import format_display_id
 from apps.core.policy import Action, can
 from apps.defects import status
 from apps.defects.models import Defect, QaStatus, TrackerStatus
 from apps.plans.models import CaseRequirement
-from apps.runs.models import Evidence, EvidenceLink, EvidenceTarget
+from apps.runs.models import EvidenceTarget
+from apps.runs.queries import evidence_for
 
 OPEN = (TrackerStatus.OPEN, TrackerStatus.IN_PROGRESS)
 FIXED_OR_CLOSED = (TrackerStatus.FIXED, TrackerStatus.CLOSED)
@@ -23,10 +24,6 @@ STATES: dict[str, Q] = {
     "verified": Q(qa_status=QaStatus.VERIFIED),
     "decided": Q(qa_status__in=DECIDED),
 }
-
-
-def _name(user) -> str | None:
-    return (user.name or user.email) if user else None
 
 
 def bug_id(defect: Defect) -> str:
@@ -69,33 +66,11 @@ def list_row(defect: Defect) -> dict:
         "qa_status": defect.qa_status,
         "shown_as": status.shown_as(defect),
         "chip": status.chip(defect),
-        "owner_name": _name(defect.owner),
+        "owner_name": display_name(defect.owner),
         "release": defect.release.name if defect.release else None,
         "age_days": max((timezone.now() - defect.created_at).days, 0),
         "created_at": defect.created_at,
     }
-
-
-def _evidence(target_type: str, target_ids: list) -> dict:
-    """Evidence for several records at once: {target_id: [evidence, ...]}."""
-    links = EvidenceLink.objects.filter(target_type=target_type, target_id__in=target_ids)
-    by_evidence: dict = {}
-    for link in links:
-        by_evidence.setdefault(link.evidence_id, []).append(link.target_id)
-    out: dict = {tid: [] for tid in target_ids}
-    for ev in (
-        Evidence.objects.filter(pk__in=by_evidence).select_related("file").order_by("display_no")
-    ):
-        item = {
-            "display_id": format_display_id(CounterKind.EVIDENCE, ev.display_no),
-            "file_id": ev.file_id,
-            "name": ev.file.original_name,
-            "mime": ev.mime,
-            "state": ev.file.state,
-        }
-        for target_id in by_evidence[ev.pk]:
-            out[target_id].append(item)
-    return out
 
 
 HISTORY = {
@@ -128,7 +103,7 @@ def allowed_actions(defect: Defect, membership: Membership) -> dict:
 
 def detail(defect: Defect, membership: Membership) -> dict:
     retests = list(defect.retests.select_related("tested_by").order_by("-tested_at"))
-    retest_evidence = _evidence(EvidenceTarget.RETEST, [r.pk for r in retests])
+    retest_evidence = evidence_for(EvidenceTarget.RETEST, [r.pk for r in retests])
     found = None
     requirements = []
     result = defect.found_in_result
@@ -159,7 +134,7 @@ def detail(defect: Defect, membership: Membership) -> dict:
     history = [
         {
             "at": e.at,
-            "actor": _name(e.actor) or "Greenlit",
+            "actor": display_name(e.actor) or "Greenlit",
             "text": HISTORY[e.action](e.after or {}),
         }
         for e in events.order_by("-at")
@@ -172,26 +147,26 @@ def detail(defect: Defect, membership: Membership) -> dict:
         "expected": defect.expected,
         "actual": defect.actual,
         "owner_id": defect.owner_id,
-        "created_by": _name(defect.created_by),
+        "created_by": display_name(defect.created_by),
         "fixed_at": defect.fixed_at,
-        "fixed_by": _name(defect.fixed_by),
+        "fixed_by": display_name(defect.fixed_by),
         "decision": (
             {
                 "decision": defect.qa_status,
                 "reason": defect.decision_reason,
-                "by": _name(defect.decided_by),
+                "by": display_name(defect.decided_by),
             }
             if decided
             else None
         ),
         "found_in": found,
         "requirements": requirements,
-        "evidence": _evidence(EvidenceTarget.DEFECT, [defect.pk])[defect.pk],
+        "evidence": evidence_for(EvidenceTarget.DEFECT, [defect.pk])[defect.pk],
         "retests": [
             {
                 "id": r.pk,
                 "outcome": r.outcome,
-                "by": _name(r.tested_by),
+                "by": display_name(r.tested_by),
                 "at": r.tested_at,
                 "build": r.build,
                 "environment": r.environment,
