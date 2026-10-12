@@ -539,6 +539,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{key}/plans/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Plans with a published version, to start a run from. */
+        get: operations["projects_plans_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/releases/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET: the project's releases, newest first. POST: create one (M4-01). */
+        get: operations["projects_releases_list"];
+        put?: never;
+        /** @description GET: the project's releases, newest first. POST: create one (M4-01). */
+        post: operations["projects_releases_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/{key}/releases/{version}/": {
         parameters: {
             query?: never;
@@ -556,6 +591,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{key}/releases/{version}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Cancel an open release. Owners, admins and QA leads. */
+        post: operations["projects_releases_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/{key}/releases/{version}/sign-off/": {
         parameters: {
             query?: never;
@@ -567,6 +619,104 @@ export interface paths {
         put?: never;
         /** @description Sign off the release (M8-06). Not ready yet needs a written reason, kept on the record. */
         post: operations["projects_releases_sign_off_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/runs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET: the project's runs, newest first. POST: start a run from a plan's current version
+         *     (FR-RUN-01); the run is tied to that exact version for life.
+         */
+        get: operations["projects_runs_list"];
+        put?: never;
+        /**
+         * @description GET: the project's runs, newest first. POST: start a run from a plan's current version
+         *     (FR-RUN-01); the run is tied to that exact version for life.
+         */
+        post: operations["projects_runs_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/runs/{run_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The run with every case: steps, expected result, outcome, evidence and defects. */
+        get: operations["projects_runs_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/runs/{run_id}/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Mark the run complete. Refused while failed results have no evidence; the answer lists
+         *     them (FR-RUN-05).
+         */
+        post: operations["projects_runs_complete_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/runs/{run_id}/results/{result_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description Record a case as passed, failed, blocked or not run (FR-RUN-02). Saved at once; sending
+         *     the same result again changes nothing, so a retried save is harmless.
+         */
+        put: operations["projects_runs_results_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/runs/{run_id}/results/{result_id}/evidence/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Attach uploaded files to a result as evidence (FR-RUN-03). */
+        post: operations["projects_runs_results_evidence_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -621,6 +771,9 @@ export interface components {
             text: string;
             refs: string[];
         };
+        AttachEvidence: {
+            file_ids: string[];
+        };
         Blocker: {
             type: components["schemas"]["TypeEnum"];
             display_id: string;
@@ -669,7 +822,7 @@ export interface components {
         };
         DefectActions: {
             edit: boolean;
-            set_status: components["schemas"]["StatusEnum"][];
+            set_status: components["schemas"]["TrackerStatusEnum"][];
             retest: boolean;
             decide: boolean;
         };
@@ -679,7 +832,7 @@ export interface components {
             display_id: string;
             title: string;
             severity: components["schemas"]["SeverityEnum"];
-            tracker_status: components["schemas"]["StatusEnum"];
+            tracker_status: components["schemas"]["TrackerStatusEnum"];
             qa_status: components["schemas"]["QaStatusEnum"];
             shown_as: string;
             chip: string;
@@ -711,7 +864,7 @@ export interface components {
             display_id: string;
             title: string;
             severity: components["schemas"]["SeverityEnum"];
-            tracker_status: components["schemas"]["StatusEnum"];
+            tracker_status: components["schemas"]["TrackerStatusEnum"];
             qa_status: components["schemas"]["QaStatusEnum"];
             shown_as: string;
             chip: string;
@@ -934,12 +1087,6 @@ export interface components {
             slug: string;
             name: string;
         };
-        /**
-         * @description * `passed` - Passed
-         *     * `failed` - Failed
-         * @enum {string}
-         */
-        OutcomeEnum: "passed" | "failed";
         PatchedDefectEdit: {
             title?: string;
             steps?: string;
@@ -959,6 +1106,13 @@ export interface components {
         };
         PatchedRoleChange: {
             role?: components["schemas"]["RoleEnum"];
+        };
+        PlanRow: {
+            display_id: string;
+            number: number;
+            title: string;
+            version: string;
+            cases: number;
         };
         Project: {
             /** Format: uuid */
@@ -1028,6 +1182,11 @@ export interface components {
             readiness: components["schemas"]["ReadinessEnum"];
             blockers: number;
         };
+        ReleaseCreate: {
+            version: string;
+            /** Format: date */
+            due?: string | null;
+        };
         ReleaseDetail: {
             project_key: string;
             version: string;
@@ -1040,9 +1199,23 @@ export interface components {
             report: components["schemas"]["Report"];
             sign_off: components["schemas"]["SignOff"] | null;
         };
+        ReleaseRow: {
+            version: string;
+            /** Format: date */
+            due: string | null;
+            state: components["schemas"]["ReleaseStateEnum"];
+            runs: number;
+        };
+        /**
+         * @description * `open` - Open
+         *     * `signed_off` - Signed Off
+         *     * `cancelled` - Cancelled
+         * @enum {string}
+         */
+        ReleaseStateEnum: "open" | "signed_off" | "cancelled";
         Report: {
             display_id: string | null;
-            state: components["schemas"]["StateEnum"];
+            state: components["schemas"]["ReportStateEnum"];
             summary: string;
             sections: components["schemas"]["ReportSection"][];
         };
@@ -1054,22 +1227,55 @@ export interface components {
             heading: string;
             lines: components["schemas"]["ReportLine"][];
         };
+        /**
+         * @description * `draft` - draft
+         *     * `signed` - signed
+         * @enum {string}
+         */
+        ReportStateEnum: "draft" | "signed";
         RequirementRef: {
             display_id: string;
             title: string;
         };
+        /**
+         * @description * `passed` - Passed
+         *     * `failed` - Failed
+         *     * `blocked` - Blocked
+         *     * `not_run` - Not Run
+         * @enum {string}
+         */
+        ResultOutcomeEnum: "passed" | "failed" | "blocked" | "not_run";
+        ResultSaved: {
+            /** Format: uuid */
+            result_id: string;
+            outcome: components["schemas"]["ResultOutcomeEnum"];
+            note: string;
+            /** Format: date-time */
+            recorded_at: string | null;
+        };
+        ResultWrite: {
+            outcome: components["schemas"]["ResultOutcomeEnum"];
+            /** @default  */
+            note: string;
+        };
         Retest: {
-            outcome: components["schemas"]["OutcomeEnum"];
+            outcome: components["schemas"]["RetestOutcomeEnum"];
             evidence_file_ids: string[];
             /** @default  */
             build: string;
             /** @default  */
             environment: string;
         };
+        /**
+         * @description * `passed` - Passed
+         *     * `failed` - Failed
+         * @enum {string}
+         */
+        RetestOutcomeEnum: "passed" | "failed";
         RetestRow: {
             /** Format: uuid */
             id: string;
-            outcome: components["schemas"]["OutcomeEnum"];
+            outcome: components["schemas"]["RetestOutcomeEnum"];
             by: string | null;
             /** Format: date-time */
             at: string;
@@ -1087,6 +1293,89 @@ export interface components {
          * @enum {string}
          */
         RoleEnum: "owner" | "admin" | "qa_lead" | "qa_engineer" | "developer" | "viewer";
+        RunCase: {
+            /** Format: uuid */
+            result_id: string;
+            case: string;
+            title: string;
+            preconditions: string;
+            steps: string[];
+            expected: string;
+            priority: components["schemas"]["SeverityEnum"];
+            outcome: components["schemas"]["ResultOutcomeEnum"];
+            note: string;
+            recorded_by: string | null;
+            /** Format: date-time */
+            recorded_at: string | null;
+            evidence: components["schemas"]["RunEvidence"][];
+            defects: components["schemas"]["RunDefect"][];
+        };
+        RunCreate: {
+            /** @description The plan's number: 3 for TP-3 */
+            plan: number;
+            release: string;
+            /** @default  */
+            build: string;
+            /** @default  */
+            environment: string;
+        };
+        RunDefect: {
+            display_id: string;
+            number: number;
+            shown_as: string;
+            chip: string;
+        };
+        RunDetail: {
+            display_id: string;
+            number: number;
+            plan: string;
+            plan_version: string;
+            release: string;
+            build: string;
+            environment: string;
+            state: components["schemas"]["RunStateEnum"];
+            started_by: string | null;
+            /** Format: date-time */
+            started_at: string;
+            total: number;
+            passed: number;
+            failed: number;
+            blocked: number;
+            not_run: number;
+            cases: components["schemas"]["RunCase"][];
+        };
+        RunEvidence: {
+            display_id: string;
+            /** Format: uuid */
+            file_id: string;
+            name: string;
+            mime: string;
+            state: string;
+        };
+        RunRow: {
+            display_id: string;
+            number: number;
+            plan: string;
+            plan_version: string;
+            release: string;
+            build: string;
+            environment: string;
+            state: components["schemas"]["RunStateEnum"];
+            started_by: string | null;
+            /** Format: date-time */
+            started_at: string;
+            total: number;
+            passed: number;
+            failed: number;
+            blocked: number;
+            not_run: number;
+        };
+        /**
+         * @description * `in_progress` - In Progress
+         *     * `complete` - Complete
+         * @enum {string}
+         */
+        RunStateEnum: "in_progress" | "complete";
         /**
          * @description * `critical` - Critical
          *     * `high` - High
@@ -1110,14 +1399,8 @@ export interface components {
             /** Format: date-time */
             until: string;
         };
-        /**
-         * @description * `draft` - draft
-         *     * `signed` - signed
-         * @enum {string}
-         */
-        StateEnum: "draft" | "signed";
         StatusChange: {
-            status: components["schemas"]["StatusEnum"];
+            status: components["schemas"]["TrackerStatusEnum"];
         };
         /**
          * @description * `open` - Open
@@ -1126,7 +1409,7 @@ export interface components {
          *     * `closed` - Closed
          * @enum {string}
          */
-        StatusEnum: "open" | "in_progress" | "fixed" | "closed";
+        TrackerStatusEnum: "open" | "in_progress" | "fixed" | "closed";
         /**
          * @description * `needs_retest` - needs_retest
          *     * `open_critical` - open_critical
@@ -2138,6 +2421,91 @@ export interface operations {
             };
         };
     };
+    projects_plans_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanRow"][];
+                };
+            };
+        };
+    };
+    projects_releases_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseRow"][];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseRow"];
+                };
+            };
+        };
+    };
+    projects_releases_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseCreate"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReleaseCreate"];
+                "multipart/form-data": components["schemas"]["ReleaseCreate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseRow"][];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseRow"];
+                };
+            };
+        };
+    };
     projects_releases_retrieve: {
         parameters: {
             query?: never;
@@ -2157,6 +2525,27 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReleaseDetail"];
                 };
+            };
+        };
+    };
+    projects_releases_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -2184,6 +2573,172 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReleaseDetail"];
+                };
+            };
+        };
+    };
+    projects_runs_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunRow"][];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunDetail"];
+                };
+            };
+        };
+    };
+    projects_runs_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunCreate"];
+                "application/x-www-form-urlencoded": components["schemas"]["RunCreate"];
+                "multipart/form-data": components["schemas"]["RunCreate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunRow"][];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunDetail"];
+                };
+            };
+        };
+    };
+    projects_runs_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunDetail"];
+                };
+            };
+        };
+    };
+    projects_runs_complete_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunDetail"];
+                };
+            };
+        };
+    };
+    projects_runs_results_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                result_id: string;
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResultWrite"];
+                "application/x-www-form-urlencoded": components["schemas"]["ResultWrite"];
+                "multipart/form-data": components["schemas"]["ResultWrite"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultSaved"];
+                };
+            };
+        };
+    };
+    projects_runs_results_evidence_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                result_id: string;
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttachEvidence"];
+                "application/x-www-form-urlencoded": components["schemas"]["AttachEvidence"];
+                "multipart/form-data": components["schemas"]["AttachEvidence"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunEvidence"][];
                 };
             };
         };

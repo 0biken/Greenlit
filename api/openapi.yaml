@@ -1061,6 +1061,98 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/projects/{key}/plans/:
+    get:
+      operationId: projects_plans_list
+      description: Plans with a published version, to start a run from.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlanRow'
+          description: ''
+  /api/projects/{key}/releases/:
+    get:
+      operationId: projects_releases_list
+      description: 'GET: the project''s releases, newest first. POST: create one (M4-01).'
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReleaseRow'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseRow'
+          description: ''
+    post:
+      operationId: projects_releases_create
+      description: 'GET: the project''s releases, newest first. POST: create one (M4-01).'
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReleaseCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReleaseCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReleaseRow'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseRow'
+          description: ''
   /api/projects/{key}/releases/{version}/:
     get:
       operationId: projects_releases_retrieve
@@ -1088,6 +1180,28 @@ paths:
               schema:
                 $ref: '#/components/schemas/ReleaseDetail'
           description: ''
+  /api/projects/{key}/releases/{version}/cancel/:
+    post:
+      operationId: projects_releases_cancel_create
+      description: Cancel an open release. Owners, admins and QA leads.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: version
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/projects/{key}/releases/{version}/sign-off/:
     post:
       operationId: projects_releases_sign_off_create
@@ -1125,6 +1239,226 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReleaseDetail'
+          description: ''
+  /api/projects/{key}/runs/:
+    get:
+      operationId: projects_runs_list
+      description: |-
+        GET: the project's runs, newest first. POST: start a run from a plan's current version
+        (FR-RUN-01); the run is tied to that exact version for life.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RunRow'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunDetail'
+          description: ''
+    post:
+      operationId: projects_runs_create
+      description: |-
+        GET: the project's runs, newest first. POST: start a run from a plan's current version
+        (FR-RUN-01); the run is tied to that exact version for life.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RunCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RunCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RunRow'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunDetail'
+          description: ''
+  /api/projects/{key}/runs/{run_id}/:
+    get:
+      operationId: projects_runs_retrieve
+      description: 'The run with every case: steps, expected result, outcome, evidence
+        and defects.'
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: run_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunDetail'
+          description: ''
+  /api/projects/{key}/runs/{run_id}/complete/:
+    post:
+      operationId: projects_runs_complete_create
+      description: |-
+        Mark the run complete. Refused while failed results have no evidence; the answer lists
+        them (FR-RUN-05).
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: run_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunDetail'
+          description: ''
+  /api/projects/{key}/runs/{run_id}/results/{result_id}/:
+    put:
+      operationId: projects_runs_results_update
+      description: |-
+        Record a case as passed, failed, blocked or not run (FR-RUN-02). Saved at once; sending
+        the same result again changes nothing, so a retried save is harmless.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: result_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: run_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResultWrite'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResultWrite'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResultWrite'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultSaved'
+          description: ''
+  /api/projects/{key}/runs/{run_id}/results/{result_id}/evidence/:
+    post:
+      operationId: projects_runs_results_evidence_create
+      description: Attach uploaded files to a result as evidence (FR-RUN-03).
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: result_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: run_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttachEvidence'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AttachEvidence'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AttachEvidence'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RunEvidence'
           description: ''
   /api/projects/{key}/summary/:
     get:
@@ -1189,6 +1523,18 @@ components:
       - at
       - refs
       - text
+    AttachEvidence:
+      type: object
+      properties:
+        file_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 20
+          minItems: 1
+      required:
+      - file_ids
     Blocker:
       type: object
       properties:
@@ -1312,7 +1658,7 @@ components:
         set_status:
           type: array
           items:
-            $ref: '#/components/schemas/StatusEnum'
+            $ref: '#/components/schemas/TrackerStatusEnum'
         retest:
           type: boolean
         decide:
@@ -1335,7 +1681,7 @@ components:
         severity:
           $ref: '#/components/schemas/SeverityEnum'
         tracker_status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/TrackerStatusEnum'
         qa_status:
           $ref: '#/components/schemas/QaStatusEnum'
         shown_as:
@@ -1439,7 +1785,7 @@ components:
         severity:
           $ref: '#/components/schemas/SeverityEnum'
         tracker_status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/TrackerStatusEnum'
         qa_status:
           $ref: '#/components/schemas/QaStatusEnum'
         shown_as:
@@ -1985,14 +2331,6 @@ components:
       - id
       - name
       - slug
-    OutcomeEnum:
-      enum:
-      - passed
-      - failed
-      type: string
-      description: |-
-        * `passed` - Passed
-        * `failed` - Failed
     PatchedDefectEdit:
       type: object
       properties:
@@ -2035,6 +2373,25 @@ components:
       properties:
         role:
           $ref: '#/components/schemas/RoleEnum'
+    PlanRow:
+      type: object
+      properties:
+        display_id:
+          type: string
+        number:
+          type: integer
+        title:
+          type: string
+        version:
+          type: string
+        cases:
+          type: integer
+      required:
+      - cases
+      - display_id
+      - number
+      - title
+      - version
     Project:
       type: object
       properties:
@@ -2199,6 +2556,18 @@ components:
       - name
       - readiness
       - version
+    ReleaseCreate:
+      type: object
+      properties:
+        version:
+          type: string
+          maxLength: 60
+        due:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - version
     ReleaseDetail:
       type: object
       properties:
@@ -2236,6 +2605,34 @@ components:
       - report
       - sign_off
       - version
+    ReleaseRow:
+      type: object
+      properties:
+        version:
+          type: string
+        due:
+          type: string
+          format: date
+          nullable: true
+        state:
+          $ref: '#/components/schemas/ReleaseStateEnum'
+        runs:
+          type: integer
+      required:
+      - due
+      - runs
+      - state
+      - version
+    ReleaseStateEnum:
+      enum:
+      - open
+      - signed_off
+      - cancelled
+      type: string
+      description: |-
+        * `open` - Open
+        * `signed_off` - Signed Off
+        * `cancelled` - Cancelled
     Report:
       type: object
       properties:
@@ -2243,7 +2640,7 @@ components:
           type: string
           nullable: true
         state:
-          $ref: '#/components/schemas/StateEnum'
+          $ref: '#/components/schemas/ReportStateEnum'
         summary:
           type: string
         sections:
@@ -2279,6 +2676,14 @@ components:
       required:
       - heading
       - lines
+    ReportStateEnum:
+      enum:
+      - draft
+      - signed
+      type: string
+      description: |-
+        * `draft` - draft
+        * `signed` - signed
     RequirementRef:
       type: object
       properties:
@@ -2289,11 +2694,53 @@ components:
       required:
       - display_id
       - title
+    ResultOutcomeEnum:
+      enum:
+      - passed
+      - failed
+      - blocked
+      - not_run
+      type: string
+      description: |-
+        * `passed` - Passed
+        * `failed` - Failed
+        * `blocked` - Blocked
+        * `not_run` - Not Run
+    ResultSaved:
+      type: object
+      properties:
+        result_id:
+          type: string
+          format: uuid
+        outcome:
+          $ref: '#/components/schemas/ResultOutcomeEnum'
+        note:
+          type: string
+        recorded_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - note
+      - outcome
+      - recorded_at
+      - result_id
+    ResultWrite:
+      type: object
+      properties:
+        outcome:
+          $ref: '#/components/schemas/ResultOutcomeEnum'
+        note:
+          type: string
+          default: ''
+          maxLength: 5000
+      required:
+      - outcome
     Retest:
       type: object
       properties:
         outcome:
-          $ref: '#/components/schemas/OutcomeEnum'
+          $ref: '#/components/schemas/RetestOutcomeEnum'
         evidence_file_ids:
           type: array
           items:
@@ -2311,6 +2758,14 @@ components:
       required:
       - evidence_file_ids
       - outcome
+    RetestOutcomeEnum:
+      enum:
+      - passed
+      - failed
+      type: string
+      description: |-
+        * `passed` - Passed
+        * `failed` - Failed
     RetestRow:
       type: object
       properties:
@@ -2318,7 +2773,7 @@ components:
           type: string
           format: uuid
         outcome:
-          $ref: '#/components/schemas/OutcomeEnum'
+          $ref: '#/components/schemas/RetestOutcomeEnum'
         by:
           type: string
           nullable: true
@@ -2357,6 +2812,231 @@ components:
         * `qa_engineer` - Qa Engineer
         * `developer` - Developer
         * `viewer` - Viewer
+    RunCase:
+      type: object
+      properties:
+        result_id:
+          type: string
+          format: uuid
+        case:
+          type: string
+        title:
+          type: string
+        preconditions:
+          type: string
+        steps:
+          type: array
+          items:
+            type: string
+        expected:
+          type: string
+        priority:
+          $ref: '#/components/schemas/SeverityEnum'
+        outcome:
+          $ref: '#/components/schemas/ResultOutcomeEnum'
+        note:
+          type: string
+        recorded_by:
+          type: string
+          nullable: true
+        recorded_at:
+          type: string
+          format: date-time
+          nullable: true
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunEvidence'
+        defects:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunDefect'
+      required:
+      - case
+      - defects
+      - evidence
+      - expected
+      - note
+      - outcome
+      - preconditions
+      - priority
+      - recorded_at
+      - recorded_by
+      - result_id
+      - steps
+      - title
+    RunCreate:
+      type: object
+      properties:
+        plan:
+          type: integer
+          minimum: 1
+          description: 'The plan''s number: 3 for TP-3'
+        release:
+          type: string
+          maxLength: 60
+        build:
+          type: string
+          default: ''
+          maxLength: 100
+        environment:
+          type: string
+          default: ''
+          maxLength: 100
+      required:
+      - plan
+      - release
+    RunDefect:
+      type: object
+      properties:
+        display_id:
+          type: string
+        number:
+          type: integer
+        shown_as:
+          type: string
+        chip:
+          type: string
+      required:
+      - chip
+      - display_id
+      - number
+      - shown_as
+    RunDetail:
+      type: object
+      properties:
+        display_id:
+          type: string
+        number:
+          type: integer
+        plan:
+          type: string
+        plan_version:
+          type: string
+        release:
+          type: string
+        build:
+          type: string
+        environment:
+          type: string
+        state:
+          $ref: '#/components/schemas/RunStateEnum'
+        started_by:
+          type: string
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+        total:
+          type: integer
+        passed:
+          type: integer
+        failed:
+          type: integer
+        blocked:
+          type: integer
+        not_run:
+          type: integer
+        cases:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunCase'
+      required:
+      - blocked
+      - build
+      - cases
+      - display_id
+      - environment
+      - failed
+      - not_run
+      - number
+      - passed
+      - plan
+      - plan_version
+      - release
+      - started_at
+      - started_by
+      - state
+      - total
+    RunEvidence:
+      type: object
+      properties:
+        display_id:
+          type: string
+        file_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        mime:
+          type: string
+        state:
+          type: string
+      required:
+      - display_id
+      - file_id
+      - mime
+      - name
+      - state
+    RunRow:
+      type: object
+      properties:
+        display_id:
+          type: string
+        number:
+          type: integer
+        plan:
+          type: string
+        plan_version:
+          type: string
+        release:
+          type: string
+        build:
+          type: string
+        environment:
+          type: string
+        state:
+          $ref: '#/components/schemas/RunStateEnum'
+        started_by:
+          type: string
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+        total:
+          type: integer
+        passed:
+          type: integer
+        failed:
+          type: integer
+        blocked:
+          type: integer
+        not_run:
+          type: integer
+      required:
+      - blocked
+      - build
+      - display_id
+      - environment
+      - failed
+      - not_run
+      - number
+      - passed
+      - plan
+      - plan_version
+      - release
+      - started_at
+      - started_by
+      - state
+      - total
+    RunStateEnum:
+      enum:
+      - in_progress
+      - complete
+      type: string
+      description: |-
+        * `in_progress` - In Progress
+        * `complete` - Complete
     SeverityEnum:
       enum:
       - critical
@@ -2406,22 +3086,14 @@ components:
       required:
       - reason
       - until
-    StateEnum:
-      enum:
-      - draft
-      - signed
-      type: string
-      description: |-
-        * `draft` - draft
-        * `signed` - signed
     StatusChange:
       type: object
       properties:
         status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/TrackerStatusEnum'
       required:
       - status
-    StatusEnum:
+    TrackerStatusEnum:
       enum:
       - open
       - in_progress

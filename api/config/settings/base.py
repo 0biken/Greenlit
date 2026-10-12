@@ -183,6 +183,17 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "Greenlit API",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # Names for choice lists that would otherwise collide in the schema (several are called
+    # "outcome", "state" or "status"), so the generated TypeScript types keep stable names.
+    "ENUM_NAME_OVERRIDES": {
+        "ResultOutcomeEnum": "apps.runs.models.Outcome",
+        "RetestOutcomeEnum": "apps.defects.models.RetestOutcome",
+        "TrackerStatusEnum": "apps.defects.models.TrackerStatus",
+        "QaStatusEnum": "apps.defects.models.QaStatus",
+        "SeverityEnum": "apps.core.choices.Priority",
+        "ReleaseStateEnum": "apps.runs.models.ReleaseState",
+        "RunStateEnum": "apps.runs.models.RunState",
+    },
 }
 
 # Job queue (ARCH §3). Redis is the broker only, not an application cache.

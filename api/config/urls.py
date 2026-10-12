@@ -15,6 +15,7 @@ from apps.defects import views as defect_views
 from apps.files import views as file_views
 from apps.inbox import views as inbox_views
 from apps.reports import views as report_views
+from apps.runs import views as run_views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -58,6 +59,30 @@ urlpatterns = [
     path("api/inbox/<str:item_id>/snooze/", inbox_views.snooze, name="inbox-snooze"),
     path("api/inbox/<str:item_id>/unsnooze/", inbox_views.unsnooze, name="inbox-unsnooze"),
     path("api/projects/<str:key>/summary/", report_views.summary, name="project-summary"),
+    path("api/projects/<str:key>/plans/", run_views.plans, name="plans"),
+    path("api/projects/<str:key>/releases/", run_views.releases, name="releases"),
+    path(
+        "api/projects/<str:key>/releases/<str:version>/cancel/",
+        run_views.cancel_release,
+        name="release-cancel",
+    ),
+    path("api/projects/<str:key>/runs/", run_views.runs, name="runs"),
+    path("api/projects/<str:key>/runs/<str:run_id>/", run_views.run_detail, name="run-detail"),
+    path(
+        "api/projects/<str:key>/runs/<str:run_id>/complete/",
+        run_views.complete,
+        name="run-complete",
+    ),
+    path(
+        "api/projects/<str:key>/runs/<str:run_id>/results/<uuid:result_id>/",
+        run_views.result,
+        name="run-result",
+    ),
+    path(
+        "api/projects/<str:key>/runs/<str:run_id>/results/<uuid:result_id>/evidence/",
+        run_views.result_evidence,
+        name="run-result-evidence",
+    ),
     path(
         "api/projects/<str:key>/releases/<str:version>/",
         report_views.release_detail,

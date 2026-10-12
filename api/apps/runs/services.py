@@ -8,6 +8,7 @@ from datetime import date
 from uuid import UUID
 
 from django.db import transaction
+from django.db.models import Exists, OuterRef
 from django.utils import timezone
 
 from apps.core import audit
@@ -23,6 +24,8 @@ from apps.runs.models import (
     EvidenceTarget,
     Outcome,
     Release,
+    ReleaseState,
+    RunState,
     TestRun,
 )
 
@@ -55,6 +58,8 @@ def start_run(
         raise ServiceError("Runs use a published plan version, not a draft.")
     if plan_version.plan.project_id != release.project_id:
         raise ServiceError("The plan and the release belong to different projects.")
+    if release.state != ReleaseState.OPEN:
+        raise ServiceError(f"Release {release.name} is not open, so it takes no new runs.")
     with transaction.atomic():
         run = TestRun.objects.create(
             org_id=release.org_id,
@@ -82,6 +87,12 @@ def record_result(result: CaseResult, actor, outcome: str, note: str = "") -> Ca
     """Save a result at once; latest write wins and the old outcome goes to the audit log."""
     if outcome not in Outcome.values:
         raise ServiceError("Choose Passed, Failed, Blocked or Not run.")
+    if result.run.state == RunState.COMPLETE:
+        raise ServiceError(
+            "This run is complete, so its results can no longer change.", code="complete"
+        )
+    if result.outcome == outcome and result.note == note:
+        return result  # a retried save: nothing to do, nothing to audit
     with transaction.atomic():
         before = result.outcome
         result.outcome = outcome
@@ -150,3 +161,69 @@ def attach_evidence(
             )
             created.append(evidence)
     return created
+
+
+def cancel_release(release: Release, actor) -> Release:
+    if release.state == ReleaseState.SIGNED_OFF:
+        raise ServiceError("A signed-off release cannot be cancelled.", code="conflict")
+    if release.state == ReleaseState.CANCELLED:
+        return release
+    with transaction.atomic():
+        release.state = ReleaseState.CANCELLED
+        release.save(update_fields=["state", "updated_at"])
+        audit.record(
+            "release.cancelled",
+            "release",
+            release.pk,
+            actor=actor,
+            before={"state": ReleaseState.OPEN},
+            after={"state": ReleaseState.CANCELLED},
+        )
+    return release
+
+
+def failures_missing_evidence(run: TestRun) -> list[CaseResult]:
+    """Failed results of this run with no evidence attached (FR-RUN-05)."""
+    linked = EvidenceLink.objects.filter(
+        target_type=EvidenceTarget.CASE_RESULT, target_id=OuterRef("pk")
+    )
+    return list(
+        CaseResult.objects.filter(run=run, outcome=Outcome.FAILED)
+        .filter(~Exists(linked))
+        .select_related("case_revision__test_case")
+        .order_by("created_at")
+    )
+
+
+class RunIncomplete(ServiceError):
+    """The run cannot be completed yet; `missing` are the failed results without evidence."""
+
+    def __init__(self, missing: list[CaseResult]):
+        n = len(missing)
+        super().__init__(
+            f"{n} failed {'result has' if n == 1 else 'results have'} no evidence. "
+            "Attach evidence to each before completing the run.",
+            code="evidence",
+        )
+        self.missing = missing
+
+
+def complete_run(run: TestRun, actor) -> TestRun:
+    """A run cannot be marked complete while failed cases have no evidence (FR-RUN-05)."""
+    if run.state == RunState.COMPLETE:
+        return run
+    missing = failures_missing_evidence(run)
+    if missing:
+        raise RunIncomplete(missing)
+    with transaction.atomic():
+        run.state = RunState.COMPLETE
+        run.save(update_fields=["state", "updated_at"])
+        audit.record(
+            "run.completed",
+            "test_run",
+            run.pk,
+            actor=actor,
+            before={"state": RunState.IN_PROGRESS},
+            after={"state": RunState.COMPLETE},
+        )
+    return run

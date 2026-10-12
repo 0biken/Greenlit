@@ -1,0 +1,198 @@
+.run-version {
+  font-size: 0.6em;
+  color: var(--ink-3);
+}
+.run-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 14px;
+}
+.run-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.save-badge {
+  font-size: 13px;
+}
+.run-banner,
+.run-missing {
+  margin-bottom: 16px;
+}
+.run-missing {
+  padding: 12px 14px;
+  border-left: 2px solid var(--stop);
+  background: var(--sheet);
+  font-size: 14px;
+}
+.run-missing ul {
+  margin-top: 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.run-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 4fr) 7fr;
+  gap: 40px;
+  align-items: start;
+}
+
+/* ---------- the list of cases ---------- */
+.run-cases {
+  position: sticky;
+  top: calc(var(--topbar-h) + 16px);
+  max-height: calc(100dvh - var(--topbar-h) - 32px);
+  overflow: auto;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--ink);
+}
+.run-case {
+  display: grid;
+  grid-template-columns: 16px auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 42px;
+  padding: 6px 10px;
+  border-bottom: var(--hairline);
+  text-align: left;
+  font-size: 14px;
+}
+/* Moving through cases is instant: no transition on the current row. */
+.run-case[aria-current='true'] {
+  background: var(--ink);
+  color: var(--paper);
+}
+.run-case[aria-current='true'] svg {
+  color: var(--paper) !important;
+}
+.run-case-id {
+  font-size: 12.5px;
+  opacity: 0.75;
+}
+.run-case-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.save-dot {
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+.save-waiting,
+.save-refused {
+  color: var(--stop-deep);
+}
+.run-case[aria-current='true'] .save-dot {
+  color: var(--rule);
+}
+@media (hover: hover) and (pointer: fine) {
+  .run-case:not([aria-current='true']):hover {
+    background: var(--sheet);
+  }
+}
+
+/* ---------- the current case ---------- */
+.run-current {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+.run-current-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.run-current-title {
+  font-size: 26px;
+  line-height: 1.2;
+  letter-spacing: -0.012em;
+}
+.run-steps {
+  display: grid;
+  gap: 6px;
+  padding-left: 22px;
+}
+.run-steps li::marker {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.run-expected {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-left: 2px solid var(--ink);
+  background: var(--sheet);
+}
+.run-outcomes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.outcome-key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 46px;
+  border: var(--hairline);
+  border-radius: var(--radius);
+  background: var(--sheet);
+  font-size: 14px;
+  font-weight: 500;
+}
+.outcome-key kbd {
+  margin-left: 2px;
+}
+.outcome-key[data-on] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+.outcome-key[data-on] kbd {
+  background: transparent;
+  border-color: var(--graphite);
+  color: var(--rule);
+}
+.outcome-key:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.run-evidence,
+.run-defects {
+  display: grid;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: var(--hairline);
+}
+.run-evidence-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.run-defects p {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.run-defects .btn {
+  justify-self: start;
+}
+
+@media (max-width: 900px) {
+  .run-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .run-cases {
+    position: static;
+    max-height: 240px;
+  }
+  .run-outcomes {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

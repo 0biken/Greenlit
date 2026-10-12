@@ -30,8 +30,10 @@ from apps.core.models import (
 from apps.core.policy import can
 from apps.core.tenancy import org_scope
 from apps.defects.status import create_defect, set_tracker_status
+from apps.plans import services as plans
 from apps.requirements.services import create_requirement
-from apps.runs.services import create_release
+from apps.runs.models import CaseResult
+from apps.runs.services import create_release, start_run
 from tests.support import HANDLED, api_endpoints, declared, stored_file, url_for
 
 pytestmark = pytest.mark.django_db
@@ -76,6 +78,20 @@ SAMPLES = {
     ("api/projects/<str:key>/releases/<str:version>/sign-off/", "post"): lambda ctx: {"reason": ""},
     ("api/projects/<str:key>/defects/<str:defect_id>/fixed/", "post"): lambda ctx: {},
     ("api/projects/<str:key>/defects/", "post"): lambda ctx: {"title": "Sample defect"},
+    ("api/projects/<str:key>/releases/", "post"): lambda ctx: {"version": f"8.{next(_counter)}"},
+    ("api/projects/<str:key>/releases/<str:version>/cancel/", "post"): lambda ctx: {},
+    ("api/projects/<str:key>/runs/", "post"): lambda ctx: {
+        "plan": ctx["plan_no"],
+        "release": ctx["open_release"],
+    },
+    ("api/projects/<str:key>/runs/<str:run_id>/complete/", "post"): lambda ctx: {},
+    ("api/projects/<str:key>/runs/<str:run_id>/results/<uuid:result_id>/", "put"): lambda ctx: {
+        "outcome": "passed"
+    },
+    (
+        "api/projects/<str:key>/runs/<str:run_id>/results/<uuid:result_id>/evidence/",
+        "post",
+    ): lambda ctx: {"file_ids": [ctx["file_id"]]},
     ("api/projects/<str:key>/defects/<str:defect_id>/", "patch"): lambda ctx: {"title": "Renamed"},
     ("api/projects/<str:key>/defects/<str:defect_id>/status/", "post"): lambda ctx: {
         "status": "closed"
@@ -143,6 +159,15 @@ def _org_with_a_member_of_each_role():
         # An available file, so downloading it and completing it (a no-op) are valid requests.
         upload = stored_file(org, project, "evidence.png")
         requirement = create_requirement(project, None, title="Pay by card", text="Card payments.")
+        # A published plan, an open release and a run on it, so the run routes have targets.
+        plan = plans.create_plan(project, None, title="Sample plan")
+        plans.add_case(
+            plans.draft_of(plan), None, title="Pays by card", steps=["Pay"], expected="Paid."
+        )
+        version = plans.approve(plans.draft_of(plan), None)
+        open_release = create_release(project, None, name="7.0")
+        run = start_run(open_release, version, None)
+        result = CaseResult.objects.get(run=run)
         fixer = User.objects.create_user("fixer@table.example", "x" * 14)
         Membership.objects.create(
             org_id=org.id, user=fixer, role=Role.DEVELOPER, status=MembershipStatus.ACTIVE
@@ -186,7 +211,11 @@ def _org_with_a_member_of_each_role():
     ctx = {
         "fresh_member": fresh_member,
         "file_id": str(upload.id),
+        "plan_no": plan.display_no,
+        "open_release": open_release.name,
         "params": {
+            "run_id": str(run.display_no),
+            "result_id": str(result.pk),
             "job_id": str(job.id),
             "file_id": str(upload.id),
             "user_id": fresh_member,

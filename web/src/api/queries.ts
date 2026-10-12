@@ -1,6 +1,19 @@
 import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, api, getCurrentOrg } from './client'
-import type { DefectDetail, DefectRow, DefectWrite, Inbox, ProjectSummary, ReleaseDetail, TrackerStatus } from './records'
+import type {
+  DefectDetail,
+  DefectRow,
+  DefectWrite,
+  Inbox,
+  Outcome,
+  PlanRow,
+  ProjectSummary,
+  ReleaseDetail,
+  ReleaseRow,
+  RunDetail,
+  RunRow,
+  TrackerStatus,
+} from './records'
 import type { components } from './schema'
 
 export type Me = components['schemas']['Me']
@@ -31,6 +44,10 @@ export const keys = {
   projectMembers: (key: string) => ['org', org(), 'project', key, 'members'] as const,
   defects: (key: string, filters: DefectFilters) => ['org', org(), 'project', key, 'defects', filters] as const,
   defect: (key: string, id: string) => ['org', org(), 'project', key, 'defect', id] as const,
+  releases: (key: string) => ['org', org(), 'project', key, 'releases'] as const,
+  plans: (key: string) => ['org', org(), 'project', key, 'plans'] as const,
+  runs: (key: string) => ['org', org(), 'project', key, 'runs'] as const,
+  run: (key: string, id: string) => ['org', org(), 'project', key, 'run', id] as const,
 }
 
 export const useMe = (enabled = true) =>
@@ -223,3 +240,61 @@ export function useDecideDefect(key: string, id: string) {
 /** A short-lived link to a stored file. Files still being scanned are not served yet (409). */
 export const fileDownloadUrl = async (fileId: string) =>
   (await api<components['schemas']['Download']>(`/api/files/${fileId}/download/`)).url
+
+// ---- releases, plans and runs ----------------------------------------------------------------
+
+export const useReleases = (key: string) =>
+  useQuery({ queryKey: keys.releases(key), queryFn: () => api<ReleaseRow[]>(`${project(key)}/releases/`) })
+
+export const usePlans = (key: string, enabled = true) =>
+  useQuery({ queryKey: keys.plans(key), queryFn: () => api<PlanRow[]>(`${project(key)}/plans/`), enabled })
+
+export const useRuns = (key: string) =>
+  useQuery({ queryKey: keys.runs(key), queryFn: () => api<RunRow[]>(`${project(key)}/runs/`) })
+
+export const useRun = (key: string, id: string) =>
+  useQuery({
+    queryKey: keys.run(key, id),
+    queryFn: () => api<RunDetail>(`${project(key)}/runs/${encodeURIComponent(id)}/`),
+    // The run screen keeps its own copy of what was typed; do not swap it out mid-run.
+    refetchOnWindowFocus: false,
+  })
+
+export function useCreateRelease(key: string) {
+  const invalidate = useInvalidateWork()
+  return useMutation({
+    mutationFn: (body: { version: string; due?: string | null }) =>
+      api<ReleaseRow>(`${project(key)}/releases/`, { method: 'POST', body }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useStartRun(key: string) {
+  const invalidate = useInvalidateWork()
+  return useMutation({
+    mutationFn: (body: { plan: number; release: string; build: string; environment: string }) =>
+      api<RunDetail>(`${project(key)}/runs/`, { method: 'POST', body }),
+    onSuccess: invalidate,
+  })
+}
+
+/** Save one result. PUT, so sending it again after a dropped connection is harmless. */
+export const saveResult = (key: string, run: number, resultId: string, outcome: Outcome, note: string) =>
+  api(`${project(key)}/runs/${run}/results/${resultId}/`, { method: 'PUT', body: { outcome, note } })
+
+export async function attachResultEvidence(key: string, run: number, resultId: string, files: File[]) {
+  const ids: string[] = []
+  for (const file of files) ids.push(await uploadEvidence(key, file))
+  return api<components['schemas']['RunEvidence'][]>(
+    `${project(key)}/runs/${run}/results/${resultId}/evidence/`,
+    { method: 'POST', body: { file_ids: ids } },
+  )
+}
+
+export function useCompleteRun(key: string, run: number) {
+  const invalidate = useInvalidateWork()
+  return useMutation({
+    mutationFn: () => api<RunDetail>(`${project(key)}/runs/${run}/complete/`, { method: 'POST' }),
+    onSuccess: invalidate,
+  })
+}

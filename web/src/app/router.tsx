@@ -10,6 +10,9 @@ import { NotFound } from '../features/NotFound'
 import { ProjectHome } from '../features/projects/ProjectHome'
 import { ProjectsList } from '../features/projects/ProjectsList'
 import { ReleasePage } from '../features/releases/ReleasePage'
+import { ReleasesList } from '../features/releases/ReleasesList'
+import { RunPage } from '../features/runs/RunPage'
+import { RunsList } from '../features/runs/RunsList'
 import { SettingsPage } from '../features/settings/SettingsPage'
 import { AppShell } from './AppShell'
 import { Gate, SignedInOnly } from './Gate'
@@ -44,7 +47,10 @@ export const router = createBrowserRouter([
       { path: 'projects', element: <ProjectsList /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: ':projectKey', element: <ProjectHome /> },
+      { path: ':projectKey/releases', element: <ReleasesList /> },
       { path: ':projectKey/releases/:version', element: <ReleasePage /> },
+      { path: ':projectKey/runs', element: <RunsList /> },
+      { path: ':projectKey/runs/:no', element: <RunPage /> },
       { path: ':projectKey/bugs', element: <DefectsList /> },
       { path: ':projectKey/bugs/new', element: <NewDefectPage /> },
       { path: ':projectKey/bugs/:no', element: <DefectDetailPage /> },

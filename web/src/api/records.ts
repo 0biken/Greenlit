@@ -26,9 +26,18 @@ export type OpenWorkRow = S['OpenWork']
 export type ProjectSummary = S['ProjectSummary']
 
 export type Severity = S['SeverityEnum']
-export type TrackerStatus = S['StatusEnum']
+export type TrackerStatus = S['TrackerStatusEnum']
 /** `chip` is one of the product's status words; the server picks it from the two statuses. */
 export type DefectRow = Omit<S['DefectRow'], 'chip'> & { chip: Status }
 export type DefectDetail = Omit<S['DefectDetail'], 'chip'> & { chip: Status }
 export type EvidenceFile = S['Evidence']
 export type DefectWrite = S['DefectWrite']
+
+export type Outcome = S['ResultOutcomeEnum']
+export type ReleaseRow = S['ReleaseRow']
+export type PlanRow = S['PlanRow']
+export type RunRow = S['RunRow']
+export type RunCase = Omit<S['RunCase'], 'defects'> & {
+  defects: (Omit<S['RunDefect'], 'chip'> & { chip: Status })[]
+}
+export type RunDetail = Omit<S['RunDetail'], 'cases'> & { cases: RunCase[] }

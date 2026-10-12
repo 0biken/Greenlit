@@ -10,7 +10,9 @@ export function ProjectNav({ projectKey }: { projectKey: string }) {
       <NavLink to={base} end>
         Home
       </NavLink>
+      <NavLink to={`${base}/runs`}>Runs</NavLink>
       <NavLink to={`${base}/bugs`}>Defects</NavLink>
+      <NavLink to={`${base}/releases`}>Releases</NavLink>
     </nav>
   )
 }
