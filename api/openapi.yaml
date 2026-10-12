@@ -606,6 +606,236 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProjectDetail'
           description: ''
+  /api/projects/{key}/defects/:
+    get:
+      operationId: projects_defects_list
+      description: 'GET: the project''s defects, open work first. POST: file a defect
+        (FR-DEF-01).'
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Part of the title, or a BUG number
+      - in: query
+        name: release
+        schema:
+          type: string
+      - in: query
+        name: severity
+        schema:
+          type: string
+          enum:
+          - critical
+          - high
+          - low
+          - medium
+      - in: query
+        name: state
+        schema:
+          type: string
+          enum:
+          - decided
+          - needs_retest
+          - open
+          - retest_failed
+          - verified
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DefectRow'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefectDetail'
+          description: ''
+    post:
+      operationId: projects_defects_create
+      description: 'GET: the project''s defects, open work first. POST: file a defect
+        (FR-DEF-01).'
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Part of the title, or a BUG number
+      - in: query
+        name: release
+        schema:
+          type: string
+      - in: query
+        name: severity
+        schema:
+          type: string
+          enum:
+          - critical
+          - high
+          - low
+          - medium
+      - in: query
+        name: state
+        schema:
+          type: string
+          enum:
+          - decided
+          - needs_retest
+          - open
+          - retest_failed
+          - verified
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DefectWrite'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DefectWrite'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DefectWrite'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DefectRow'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefectDetail'
+          description: ''
+  /api/projects/{key}/defects/{defect_id}/:
+    get:
+      operationId: projects_defects_retrieve
+      description: 'GET: one defect with its retests, evidence and history. PATCH:
+        edit its own fields.'
+      parameters:
+      - in: path
+        name: defect_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefectDetail'
+          description: ''
+    patch:
+      operationId: projects_defects_partial_update
+      description: 'GET: one defect with its retests, evidence and history. PATCH:
+        edit its own fields.'
+      parameters:
+      - in: path
+        name: defect_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDefectEdit'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDefectEdit'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDefectEdit'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefectDetail'
+          description: ''
+  /api/projects/{key}/defects/{defect_id}/decision/:
+    post:
+      operationId: projects_defects_decision_create
+      description: Won't fix or Deferred, with a reason; the approver is recorded
+        (FR-DEF-04).
+      parameters:
+      - in: path
+        name: defect_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefectState'
+          description: ''
   /api/projects/{key}/defects/{defect_id}/fixed/:
     post:
       operationId: projects_defects_fixed_create
@@ -667,6 +897,45 @@ paths:
       - cookieAuth: []
       responses:
         '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefectState'
+          description: ''
+  /api/projects/{key}/defects/{defect_id}/status/:
+    post:
+      operationId: projects_defects_status_create
+      description: 'Set the tracker status: open, in progress, fixed or closed (FR-DEF-02,
+        FR-DEF-05).'
+      parameters:
+      - in: path
+        name: defect_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusChange'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StatusChange'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StatusChange'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
           content:
             application/json:
               schema:
@@ -1002,6 +1271,205 @@ components:
       - name
       - role
       - slug
+    Decision:
+      type: object
+      properties:
+        decision:
+          type: string
+        reason:
+          type: string
+        by:
+          type: string
+          nullable: true
+      required:
+      - by
+      - decision
+      - reason
+    DecisionEnum:
+      enum:
+      - wont_fix
+      - deferred
+      type: string
+      description: |-
+        * `wont_fix` - wont_fix
+        * `deferred` - deferred
+    DecisionRequest:
+      type: object
+      properties:
+        decision:
+          $ref: '#/components/schemas/DecisionEnum'
+        reason:
+          type: string
+          maxLength: 2000
+      required:
+      - decision
+      - reason
+    DefectActions:
+      type: object
+      properties:
+        edit:
+          type: boolean
+        set_status:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatusEnum'
+        retest:
+          type: boolean
+        decide:
+          type: boolean
+      required:
+      - decide
+      - edit
+      - retest
+      - set_status
+    DefectDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_id:
+          type: string
+        title:
+          type: string
+        severity:
+          $ref: '#/components/schemas/SeverityEnum'
+        tracker_status:
+          $ref: '#/components/schemas/StatusEnum'
+        qa_status:
+          $ref: '#/components/schemas/QaStatusEnum'
+        shown_as:
+          type: string
+        chip:
+          type: string
+        owner_name:
+          type: string
+          nullable: true
+        release:
+          type: string
+          nullable: true
+        age_days:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        steps:
+          type: string
+        expected:
+          type: string
+        actual:
+          type: string
+        owner_id:
+          type: string
+          format: uuid
+          nullable: true
+        created_by:
+          type: string
+          nullable: true
+        fixed_at:
+          type: string
+          format: date-time
+          nullable: true
+        fixed_by:
+          type: string
+          nullable: true
+        decision:
+          allOf:
+          - $ref: '#/components/schemas/Decision'
+          nullable: true
+        found_in:
+          allOf:
+          - $ref: '#/components/schemas/FoundIn'
+          nullable: true
+        requirements:
+          type: array
+          items:
+            $ref: '#/components/schemas/RequirementRef'
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/Evidence'
+        retests:
+          type: array
+          items:
+            $ref: '#/components/schemas/RetestRow'
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistoryLine'
+        actions:
+          $ref: '#/components/schemas/DefectActions'
+      required:
+      - actions
+      - actual
+      - age_days
+      - chip
+      - created_at
+      - created_by
+      - decision
+      - display_id
+      - evidence
+      - expected
+      - fixed_at
+      - fixed_by
+      - found_in
+      - history
+      - id
+      - owner_id
+      - owner_name
+      - qa_status
+      - release
+      - requirements
+      - retests
+      - severity
+      - shown_as
+      - steps
+      - title
+      - tracker_status
+    DefectRow:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_id:
+          type: string
+        title:
+          type: string
+        severity:
+          $ref: '#/components/schemas/SeverityEnum'
+        tracker_status:
+          $ref: '#/components/schemas/StatusEnum'
+        qa_status:
+          $ref: '#/components/schemas/QaStatusEnum'
+        shown_as:
+          type: string
+        chip:
+          type: string
+        owner_name:
+          type: string
+          nullable: true
+        release:
+          type: string
+          nullable: true
+        age_days:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+      required:
+      - age_days
+      - chip
+      - created_at
+      - display_id
+      - id
+      - owner_name
+      - qa_status
+      - release
+      - severity
+      - shown_as
+      - title
+      - tracker_status
     DefectState:
       type: object
       properties:
@@ -1018,6 +1486,43 @@ components:
       - qa_status
       - shown_as
       - tracker_status
+    DefectWrite:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        steps:
+          type: string
+          maxLength: 10000
+        expected:
+          type: string
+          maxLength: 5000
+        actual:
+          type: string
+          maxLength: 5000
+        severity:
+          $ref: '#/components/schemas/SeverityEnum'
+        owner_id:
+          type: string
+          format: uuid
+          nullable: true
+        release:
+          type: string
+          nullable: true
+          maxLength: 60
+        found_in_result:
+          type: string
+          format: uuid
+          nullable: true
+        evidence_file_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 20
+      required:
+      - title
     Download:
       type: object
       properties:
@@ -1029,6 +1534,26 @@ components:
       required:
       - expires_at
       - url
+    Evidence:
+      type: object
+      properties:
+        display_id:
+          type: string
+        file_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        mime:
+          type: string
+        state:
+          type: string
+      required:
+      - display_id
+      - file_id
+      - mime
+      - name
+      - state
     File:
       type: object
       properties:
@@ -1076,6 +1601,26 @@ components:
             type: string
       required:
       - enabled
+    FoundIn:
+      type: object
+      properties:
+        run:
+          type: string
+        run_no:
+          type: integer
+        case:
+          type: string
+        case_title:
+          type: string
+        result_id:
+          type: string
+          format: uuid
+      required:
+      - case
+      - case_title
+      - result_id
+      - run
+      - run_no
     GroupEnum:
       enum:
       - closed_failed_retest
@@ -1101,6 +1646,20 @@ components:
           type: string
       required:
       - status
+    HistoryLine:
+      type: object
+      properties:
+        at:
+          type: string
+          format: date-time
+        actor:
+          type: string
+        text:
+          type: string
+      required:
+      - actor
+      - at
+      - text
     Inbox:
       type: object
       properties:
@@ -1434,6 +1993,31 @@ components:
       description: |-
         * `passed` - Passed
         * `failed` - Failed
+    PatchedDefectEdit:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        steps:
+          type: string
+          maxLength: 10000
+        expected:
+          type: string
+          maxLength: 5000
+        actual:
+          type: string
+          maxLength: 5000
+        severity:
+          $ref: '#/components/schemas/SeverityEnum'
+        owner_id:
+          type: string
+          format: uuid
+          nullable: true
+        release:
+          type: string
+          nullable: true
+          maxLength: 60
     PatchedProjectUpdate:
       type: object
       properties:
@@ -1572,6 +2156,20 @@ components:
       - name
       - open_work
       - release
+    QaStatusEnum:
+      enum:
+      - not_retested
+      - verified
+      - retest_failed
+      - wont_fix
+      - deferred
+      type: string
+      description: |-
+        * `not_retested` - Not Retested
+        * `verified` - Verified
+        * `retest_failed` - Retest Failed
+        * `wont_fix` - Wont Fix
+        * `deferred` - Deferred
     ReadinessEnum:
       enum:
       - ready
@@ -1681,6 +2279,16 @@ components:
       required:
       - heading
       - lines
+    RequirementRef:
+      type: object
+      properties:
+        display_id:
+          type: string
+        title:
+          type: string
+      required:
+      - display_id
+      - title
     Retest:
       type: object
       properties:
@@ -1703,6 +2311,36 @@ components:
       required:
       - evidence_file_ids
       - outcome
+    RetestRow:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        outcome:
+          $ref: '#/components/schemas/OutcomeEnum'
+        by:
+          type: string
+          nullable: true
+        at:
+          type: string
+          format: date-time
+        build:
+          type: string
+        environment:
+          type: string
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/Evidence'
+      required:
+      - at
+      - build
+      - by
+      - environment
+      - evidence
+      - id
+      - outcome
     RoleEnum:
       enum:
       - owner
@@ -1719,6 +2357,18 @@ components:
         * `qa_engineer` - Qa Engineer
         * `developer` - Developer
         * `viewer` - Viewer
+    SeverityEnum:
+      enum:
+      - critical
+      - high
+      - medium
+      - low
+      type: string
+      description: |-
+        * `critical` - Critical
+        * `high` - High
+        * `medium` - Medium
+        * `low` - Low
     SignOff:
       type: object
       properties:
@@ -1764,6 +2414,25 @@ components:
       description: |-
         * `draft` - draft
         * `signed` - signed
+    StatusChange:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+      required:
+      - status
+    StatusEnum:
+      enum:
+      - open
+      - in_progress
+      - fixed
+      - closed
+      type: string
+      description: |-
+        * `open` - Open
+        * `in_progress` - In Progress
+        * `fixed` - Fixed
+        * `closed` - Closed
     TypeEnum:
       enum:
       - needs_retest

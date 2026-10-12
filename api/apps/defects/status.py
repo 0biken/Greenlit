@@ -24,7 +24,7 @@ from apps.core.numbering import next_number
 from apps.core.project_settings import project_settings
 from apps.core.services import ServiceError
 from apps.defects.models import Defect, QaStatus, Retest, RetestOutcome, TrackerStatus
-from apps.runs.models import CaseResult, EvidenceTarget, Release
+from apps.runs.models import CaseResult, EvidenceLink, EvidenceTarget, Release
 from apps.runs.services import attach_evidence
 
 FIXED_OR_CLOSED = (TrackerStatus.FIXED, TrackerStatus.CLOSED)
@@ -73,6 +73,11 @@ def create_defect(
         raise ServiceError("Give the defect a title.")
     if severity not in Priority.values:
         raise ServiceError("Choose a severity: Critical, High, Medium or Low.")
+    if found_in_result is not None:
+        if found_in_result.run.project_id != project.pk:
+            raise ServiceError("That result belongs to another project.")
+        # A defect found in a run belongs to that run's release unless told otherwise.
+        release = release or found_in_result.run.release
     if release is not None and release.project_id != project.pk:
         raise ServiceError("The release belongs to another project.")
     file_ids = list(evidence_file_ids)
@@ -93,6 +98,17 @@ def create_defect(
         )
         if file_ids:
             attach_evidence(project, actor, file_ids, [(EvidenceTarget.DEFECT, defect.pk)])
+        if found_in_result is not None:
+            # FR-RUN-04: the evidence already on the failed result supports the defect too.
+            for link in EvidenceLink.objects.filter(
+                target_type=EvidenceTarget.CASE_RESULT, target_id=found_in_result.pk
+            ):
+                EvidenceLink.objects.get_or_create(
+                    evidence_id=link.evidence_id,
+                    target_type=EvidenceTarget.DEFECT,
+                    target_id=defect.pk,
+                    defaults={"org_id": project.org_id},
+                )
         audit.record(
             "defect.created",
             "defect",
@@ -204,6 +220,59 @@ def decide(defect: Defect, actor, decision: str, reason: str) -> Defect:
         defect.decided_by = actor
         _save(defect, actor, before, action="defect.decided")
     return defect
+
+
+EDITABLE = ("title", "steps", "expected", "actual", "severity", "owner", "release")
+
+
+def update_defect(defect: Defect, actor, **changes) -> Defect:
+    """Edit a defect's own fields (never its two statuses). The audit entry names the fields
+    that changed and, for the short ones, their values; it never copies the long text."""
+    unknown = set(changes) - set(EDITABLE)
+    if unknown:
+        raise ServiceError(f"Cannot change: {', '.join(sorted(unknown))}.")
+    if "title" in changes and not str(changes["title"]).strip():
+        raise ServiceError("Give the defect a title.")
+    if "severity" in changes and changes["severity"] not in Priority.values:
+        raise ServiceError("Choose a severity: Critical, High, Medium or Low.")
+    release = changes.get("release")
+    if release is not None and release.project_id != defect.project_id:
+        raise ServiceError("The release belongs to another project.")
+    changed = [name for name, value in changes.items() if getattr(defect, name) != value]
+    if not changed:
+        return defect
+
+    def short(d: Defect) -> dict:
+        return {
+            "severity": d.severity,
+            "owner": str(d.owner_id) if d.owner_id else None,
+            "release": str(d.release_id) if d.release_id else None,
+        }
+
+    with transaction.atomic():
+        before = short(defect)
+        for name in changed:
+            setattr(defect, name, changes[name])
+        defect.save()
+        audit.record(
+            "defect.edited",
+            "defect",
+            defect.pk,
+            actor=actor,
+            before=before,
+            after={**short(defect), "fields": sorted(changed)},
+        )
+    return defect
+
+
+def chip(defect: Defect) -> str:
+    """The status chip the web app draws for this defect (its mark and word)."""
+    t, q = defect.tracker_status, defect.qa_status
+    if q in (QaStatus.WONT_FIX, QaStatus.DEFERRED, QaStatus.VERIFIED):
+        return str(q)
+    if q == QaStatus.RETEST_FAILED:
+        return "retest_failed"
+    return "needs_retest" if t in FIXED_OR_CLOSED else "open"
 
 
 def latest_retest(defect: Defect) -> Retest | None:

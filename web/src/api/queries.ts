@@ -1,6 +1,6 @@
 import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, api, getCurrentOrg } from './client'
-import type { Inbox, ProjectSummary, ReleaseDetail } from './records'
+import type { DefectDetail, DefectRow, DefectWrite, Inbox, ProjectSummary, ReleaseDetail, TrackerStatus } from './records'
 import type { components } from './schema'
 
 export type Me = components['schemas']['Me']
@@ -28,6 +28,9 @@ export const keys = {
   inbox: (snoozed: boolean) => ['org', org(), 'inbox', snoozed] as const,
   summary: (key: string) => ['org', org(), 'project', key, 'summary'] as const,
   release: (key: string, version: string) => ['org', org(), 'project', key, 'release', version] as const,
+  projectMembers: (key: string) => ['org', org(), 'project', key, 'members'] as const,
+  defects: (key: string, filters: DefectFilters) => ['org', org(), 'project', key, 'defects', filters] as const,
+  defect: (key: string, id: string) => ['org', org(), 'project', key, 'defect', id] as const,
 }
 
 export const useMe = (enabled = true) =>
@@ -150,3 +153,73 @@ export function useSignOff(key: string, version: string) {
     onSuccess: invalidate,
   })
 }
+
+// ---- defects -------------------------------------------------------------------------------
+
+export type DefectFilters = { state?: string; severity?: string; q?: string }
+export type ProjectMember = components['schemas']['ProjectMember']
+
+const project = (key: string) => `/api/projects/${encodeURIComponent(key)}`
+const defectUrl = (key: string, id: string) => `${project(key)}/defects/${encodeURIComponent(id)}/`
+
+export const useProjectMembers = (key: string) =>
+  useQuery({ queryKey: keys.projectMembers(key), queryFn: () => api<ProjectMember[]>(`${project(key)}/members/`) })
+
+export const useDefects = (key: string, filters: DefectFilters) =>
+  useQuery({
+    queryKey: keys.defects(key, filters),
+    queryFn: () => {
+      const query = new URLSearchParams(Object.entries(filters).filter(([, v]) => v) as [string, string][])
+      return api<DefectRow[]>(`${project(key)}/defects/${query.size ? `?${query}` : ''}`)
+    },
+    placeholderData: (previous) => previous,
+  })
+
+export const useDefect = (key: string, id: string) =>
+  useQuery({ queryKey: keys.defect(key, id), queryFn: () => api<DefectDetail>(defectUrl(key, id)) })
+
+export type DefectInput = Omit<DefectWrite, 'evidence_file_ids'> & { files?: File[] }
+
+export function useCreateDefect(key: string) {
+  const invalidate = useInvalidateWork()
+  return useMutation({
+    mutationFn: async ({ files = [], ...body }: DefectInput) => {
+      const ids: string[] = []
+      for (const file of files) ids.push(await uploadEvidence(key, file))
+      return api<DefectDetail>(`${project(key)}/defects/`, {
+        method: 'POST',
+        body: { ...body, evidence_file_ids: ids },
+      })
+    },
+    onSuccess: invalidate,
+  })
+}
+
+export function useEditDefect(key: string, id: string) {
+  const invalidate = useInvalidateWork()
+  return useMutation({
+    mutationFn: (body: Partial<DefectWrite>) => api<DefectDetail>(defectUrl(key, id), { method: 'PATCH', body }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useSetDefectStatus(key: string, id: string) {
+  const invalidate = useInvalidateWork()
+  return useMutation({
+    mutationFn: (status: TrackerStatus) => api(`${defectUrl(key, id)}status/`, { method: 'POST', body: { status } }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useDecideDefect(key: string, id: string) {
+  const invalidate = useInvalidateWork()
+  return useMutation({
+    mutationFn: (body: { decision: 'wont_fix' | 'deferred'; reason: string }) =>
+      api(`${defectUrl(key, id)}decision/`, { method: 'POST', body }),
+    onSuccess: invalidate,
+  })
+}
+
+/** A short-lived link to a stored file. Files still being scanned are not served yet (409). */
+export const fileDownloadUrl = async (fileId: string) =>
+  (await api<components['schemas']['Download']>(`/api/files/${fileId}/download/`)).url

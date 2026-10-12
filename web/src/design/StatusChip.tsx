@@ -15,6 +15,9 @@ export type Status =
   | 'uncovered'
   | 'missing_evidence'
   | 'open'
+  | 'wont_fix'
+  | 'deferred'
+  | 'in_progress'
 
 type Def = { mark: MarkKind; word: string; tone: 'pass' | 'fail' | 'hold' | 'open' | 'draft' | 'ver' }
 
@@ -31,18 +34,24 @@ export const STATUS: Record<Status, Def> = {
   uncovered: { mark: 'open', word: 'No test cases', tone: 'open' },
   missing_evidence: { mark: 'hold', word: 'Missing evidence', tone: 'hold' },
   open: { mark: 'open', word: 'Open', tone: 'open' },
+  // A decision, not a result: a dash, in the neutral tone.
+  wont_fix: { mark: 'hold', word: "Won't fix", tone: 'open' },
+  deferred: { mark: 'hold', word: 'Deferred', tone: 'open' },
+  in_progress: { mark: 'open', word: 'In progress', tone: 'open' },
 }
 
 type Props = {
   status: Status
+  /** A more exact word from the server, such as "Closed, retest failed". The mark stays. */
+  word?: string
   /** Extra detail after the word, such as an age: "Stale · 42d". */
   detail?: string
   /** Fuller detail for screen readers: "Status: Needs retest, 4 days". */
   srDetail?: string
 }
 
-export function StatusChip({ status, detail, srDetail }: Props) {
-  const def = STATUS[status]
+export function StatusChip({ status, word, detail, srDetail }: Props) {
+  const def = { ...STATUS[status], word: word ?? STATUS[status].word }
   const spoken = `Status: ${def.word}${srDetail ? `, ${srDetail}` : detail ? `, ${detail}` : ''}`
   return (
     <span className={`chip chip-${def.tone}`} role="img" aria-label={spoken}>

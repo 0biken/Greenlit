@@ -6,7 +6,7 @@ import { auth, authError, type AuthResult } from '../../api/client'
 import { keys } from '../../api/queries'
 import { Button } from '../../design/Button'
 import { AuthLayout, Field, FormError } from './AuthLayout'
-import { safeNext, sessionKey } from './session'
+import { safeNext, sessionKey, useSession } from './session'
 
 // Sign-in screens over allauth's headless API (docs/sign-in.md). allauth answers 401 for a
 // step that is still pending (verify email, second step); those move the person on, not back.
@@ -39,6 +39,12 @@ export function SignIn() {
   const [params] = useSearchParams()
   const next = safeNext(params.get('next'))
   const { busy, result, run, formError } = useAuthForm()
+  const session = useSession()
+
+  // Already signed in (a bookmark, or the back button): go straight on.
+  useEffect(() => {
+    if (session.data?.authenticated) navigate(next, { replace: true })
+  }, [session.data?.authenticated, navigate, next])
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()

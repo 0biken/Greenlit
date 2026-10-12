@@ -7,6 +7,7 @@ import { Mark, type MarkKind } from '../../design/Mark'
 import { EmptyState, ErrorState, SkeletonRows } from '../../design/states'
 import { NotFound } from '../NotFound'
 import { ReadinessChip } from '../releases/ReadinessChip'
+import { ProjectNav } from './ProjectNav'
 import './projects.css'
 
 // Project home: the dashboard (UX screen 4). A ledger, not a wall of charts: the release,
@@ -62,6 +63,7 @@ export function ProjectHome() {
           {s.client_name ? <p className="page-sub">For {s.client_name}</p> : null}
         </div>
       </header>
+      <ProjectNav projectKey={projectKey} />
 
       {s.is_new ? (
         <FirstVisit />

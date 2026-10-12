@@ -1,6 +1,9 @@
 import { createBrowserRouter, Navigate, useRouteError } from 'react-router'
 import { ErrorState } from '../design/states'
 import { EnrolTotp, RequestReset, ResetPassword, SignIn, SignUp, TwoStep, VerifyEmail } from '../features/auth/AuthPages'
+import { DefectDetailPage } from '../features/defects/DefectDetailPage'
+import { DefectsList } from '../features/defects/DefectsList'
+import { NewDefectPage } from '../features/defects/NewDefectPage'
 import { InboxPage } from '../features/inbox/InboxPage'
 import { AcceptInvite, Welcome } from '../features/orgs/OrgPages'
 import { NotFound } from '../features/NotFound'
@@ -42,6 +45,9 @@ export const router = createBrowserRouter([
       { path: 'settings', element: <SettingsPage /> },
       { path: ':projectKey', element: <ProjectHome /> },
       { path: ':projectKey/releases/:version', element: <ReleasePage /> },
+      { path: ':projectKey/bugs', element: <DefectsList /> },
+      { path: ':projectKey/bugs/new', element: <NewDefectPage /> },
+      { path: ':projectKey/bugs/:no', element: <DefectDetailPage /> },
       { path: '*', element: <NotFound /> },
     ],
   },

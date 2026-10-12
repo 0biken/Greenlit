@@ -13,6 +13,7 @@ import { StatusChip } from '../../design/StatusChip'
 import { RetestDialog } from '../defects/RetestDialog'
 import { NotFound } from '../NotFound'
 import { CoverageBlock, Linkified } from '../projects/ProjectHome'
+import { ProjectNav } from '../projects/ProjectNav'
 import { ReadinessChip } from './ReadinessChip'
 import './release.css'
 
@@ -59,6 +60,7 @@ export function ReleasePage() {
           ) : null}
         </div>
       </header>
+      <ProjectNav projectKey={projectKey} />
 
       <div className="release-layout">
         <section className="readiness" aria-labelledby="readiness-h" aria-live="polite">

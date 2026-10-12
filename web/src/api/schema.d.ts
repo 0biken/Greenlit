@@ -380,6 +380,59 @@ export interface paths {
         patch: operations["projects_partial_update"];
         trace?: never;
     };
+    "/api/projects/{key}/defects/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET: the project's defects, open work first. POST: file a defect (FR-DEF-01). */
+        get: operations["projects_defects_list"];
+        put?: never;
+        /** @description GET: the project's defects, open work first. POST: file a defect (FR-DEF-01). */
+        post: operations["projects_defects_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/defects/{defect_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET: one defect with its retests, evidence and history. PATCH: edit its own fields. */
+        get: operations["projects_defects_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description GET: one defect with its retests, evidence and history. PATCH: edit its own fields. */
+        patch: operations["projects_defects_partial_update"];
+        trace?: never;
+    };
+    "/api/projects/{key}/defects/{defect_id}/decision/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Won't fix or Deferred, with a reason; the approver is recorded (FR-DEF-04). */
+        post: operations["projects_defects_decision_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/{key}/defects/{defect_id}/fixed/": {
         parameters: {
             query?: never;
@@ -411,6 +464,23 @@ export interface paths {
          *     and the tracker status goes back to Open.
          */
         post: operations["projects_defects_retests_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/defects/{defect_id}/status/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Set the tracker status: open, in progress, fixed or closed (FR-DEF-02, FR-DEF-05). */
+        post: operations["projects_defects_status_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -582,16 +652,106 @@ export interface components {
             name: string;
             role: string;
         };
+        Decision: {
+            decision: string;
+            reason: string;
+            by: string | null;
+        };
+        /**
+         * @description * `wont_fix` - wont_fix
+         *     * `deferred` - deferred
+         * @enum {string}
+         */
+        DecisionEnum: "wont_fix" | "deferred";
+        DecisionRequest: {
+            decision: components["schemas"]["DecisionEnum"];
+            reason: string;
+        };
+        DefectActions: {
+            edit: boolean;
+            set_status: components["schemas"]["StatusEnum"][];
+            retest: boolean;
+            decide: boolean;
+        };
+        DefectDetail: {
+            /** Format: uuid */
+            id: string;
+            display_id: string;
+            title: string;
+            severity: components["schemas"]["SeverityEnum"];
+            tracker_status: components["schemas"]["StatusEnum"];
+            qa_status: components["schemas"]["QaStatusEnum"];
+            shown_as: string;
+            chip: string;
+            owner_name: string | null;
+            release: string | null;
+            age_days: number;
+            /** Format: date-time */
+            created_at: string;
+            steps: string;
+            expected: string;
+            actual: string;
+            /** Format: uuid */
+            owner_id: string | null;
+            created_by: string | null;
+            /** Format: date-time */
+            fixed_at: string | null;
+            fixed_by: string | null;
+            decision: components["schemas"]["Decision"] | null;
+            found_in: components["schemas"]["FoundIn"] | null;
+            requirements: components["schemas"]["RequirementRef"][];
+            evidence: components["schemas"]["Evidence"][];
+            retests: components["schemas"]["RetestRow"][];
+            history: components["schemas"]["HistoryLine"][];
+            actions: components["schemas"]["DefectActions"];
+        };
+        DefectRow: {
+            /** Format: uuid */
+            id: string;
+            display_id: string;
+            title: string;
+            severity: components["schemas"]["SeverityEnum"];
+            tracker_status: components["schemas"]["StatusEnum"];
+            qa_status: components["schemas"]["QaStatusEnum"];
+            shown_as: string;
+            chip: string;
+            owner_name: string | null;
+            release: string | null;
+            age_days: number;
+            /** Format: date-time */
+            created_at: string;
+        };
         DefectState: {
             display_id: string;
             tracker_status: string;
             qa_status: string;
             shown_as: string;
         };
+        DefectWrite: {
+            title: string;
+            steps?: string;
+            expected?: string;
+            actual?: string;
+            severity?: components["schemas"]["SeverityEnum"];
+            /** Format: uuid */
+            owner_id?: string | null;
+            release?: string | null;
+            /** Format: uuid */
+            found_in_result?: string | null;
+            evidence_file_ids?: string[];
+        };
         Download: {
             url: string;
             /** Format: date-time */
             expires_at: string;
+        };
+        Evidence: {
+            display_id: string;
+            /** Format: uuid */
+            file_id: string;
+            name: string;
+            mime: string;
+            state: string;
         };
         File: {
             /** Format: uuid */
@@ -611,6 +771,14 @@ export interface components {
         Flags: {
             enabled: string[];
         };
+        FoundIn: {
+            run: string;
+            run_no: number;
+            case: string;
+            case_title: string;
+            /** Format: uuid */
+            result_id: string;
+        };
         /**
          * @description * `closed_failed_retest` - closed_failed_retest
          *     * `needs_retest` - needs_retest
@@ -624,6 +792,12 @@ export interface components {
         GroupEnum: "closed_failed_retest" | "needs_retest" | "aging_defects" | "unfiled_failures" | "missing_evidence" | "stale_tests" | "uncovered";
         Health: {
             status: string;
+        };
+        HistoryLine: {
+            /** Format: date-time */
+            at: string;
+            actor: string;
+            text: string;
         };
         Inbox: {
             items: components["schemas"]["InboxItem"][];
@@ -766,6 +940,16 @@ export interface components {
          * @enum {string}
          */
         OutcomeEnum: "passed" | "failed";
+        PatchedDefectEdit: {
+            title?: string;
+            steps?: string;
+            expected?: string;
+            actual?: string;
+            severity?: components["schemas"]["SeverityEnum"];
+            /** Format: uuid */
+            owner_id?: string | null;
+            release?: string | null;
+        };
         PatchedProjectUpdate: {
             name?: string;
             client_name?: string;
@@ -822,6 +1006,15 @@ export interface components {
             counts: components["schemas"]["Counts"];
         };
         /**
+         * @description * `not_retested` - Not Retested
+         *     * `verified` - Verified
+         *     * `retest_failed` - Retest Failed
+         *     * `wont_fix` - Wont Fix
+         *     * `deferred` - Deferred
+         * @enum {string}
+         */
+        QaStatusEnum: "not_retested" | "verified" | "retest_failed" | "wont_fix" | "deferred";
+        /**
          * @description * `ready` - ready
          *     * `not_ready` - not_ready
          * @enum {string}
@@ -861,6 +1054,10 @@ export interface components {
             heading: string;
             lines: components["schemas"]["ReportLine"][];
         };
+        RequirementRef: {
+            display_id: string;
+            title: string;
+        };
         Retest: {
             outcome: components["schemas"]["OutcomeEnum"];
             evidence_file_ids: string[];
@@ -868,6 +1065,17 @@ export interface components {
             build: string;
             /** @default  */
             environment: string;
+        };
+        RetestRow: {
+            /** Format: uuid */
+            id: string;
+            outcome: components["schemas"]["OutcomeEnum"];
+            by: string | null;
+            /** Format: date-time */
+            at: string;
+            build: string;
+            environment: string;
+            evidence: components["schemas"]["Evidence"][];
         };
         /**
          * @description * `owner` - Owner
@@ -879,6 +1087,14 @@ export interface components {
          * @enum {string}
          */
         RoleEnum: "owner" | "admin" | "qa_lead" | "qa_engineer" | "developer" | "viewer";
+        /**
+         * @description * `critical` - Critical
+         *     * `high` - High
+         *     * `medium` - Medium
+         *     * `low` - Low
+         * @enum {string}
+         */
+        SeverityEnum: "critical" | "high" | "medium" | "low";
         SignOff: {
             by: string;
             /** Format: date-time */
@@ -900,6 +1116,17 @@ export interface components {
          * @enum {string}
          */
         StateEnum: "draft" | "signed";
+        StatusChange: {
+            status: components["schemas"]["StatusEnum"];
+        };
+        /**
+         * @description * `open` - Open
+         *     * `in_progress` - In Progress
+         *     * `fixed` - Fixed
+         *     * `closed` - Closed
+         * @enum {string}
+         */
+        StatusEnum: "open" | "in_progress" | "fixed" | "closed";
         /**
          * @description * `needs_retest` - needs_retest
          *     * `open_critical` - open_critical
@@ -1569,6 +1796,160 @@ export interface operations {
             };
         };
     };
+    projects_defects_list: {
+        parameters: {
+            query?: {
+                /** @description Part of the title, or a BUG number */
+                q?: string;
+                release?: string;
+                severity?: "critical" | "high" | "low" | "medium";
+                state?: "decided" | "needs_retest" | "open" | "retest_failed" | "verified";
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectRow"][];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectDetail"];
+                };
+            };
+        };
+    };
+    projects_defects_create: {
+        parameters: {
+            query?: {
+                /** @description Part of the title, or a BUG number */
+                q?: string;
+                release?: string;
+                severity?: "critical" | "high" | "low" | "medium";
+                state?: "decided" | "needs_retest" | "open" | "retest_failed" | "verified";
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefectWrite"];
+                "application/x-www-form-urlencoded": components["schemas"]["DefectWrite"];
+                "multipart/form-data": components["schemas"]["DefectWrite"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectRow"][];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectDetail"];
+                };
+            };
+        };
+    };
+    projects_defects_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                defect_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectDetail"];
+                };
+            };
+        };
+    };
+    projects_defects_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                defect_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedDefectEdit"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedDefectEdit"];
+                "multipart/form-data": components["schemas"]["PatchedDefectEdit"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectDetail"];
+                };
+            };
+        };
+    };
+    projects_defects_decision_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                defect_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DecisionRequest"];
+                "multipart/form-data": components["schemas"]["DecisionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectState"];
+                };
+            };
+        };
+    };
     projects_defects_fixed_create: {
         parameters: {
             query?: never;
@@ -1610,6 +1991,34 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectState"];
+                };
+            };
+        };
+    };
+    projects_defects_status_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                defect_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StatusChange"];
+                "application/x-www-form-urlencoded": components["schemas"]["StatusChange"];
+                "multipart/form-data": components["schemas"]["StatusChange"];
+            };
+        };
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

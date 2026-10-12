@@ -75,6 +75,15 @@ SAMPLES = {
     ("api/inbox/<str:item_id>/unsnooze/", "post"): lambda ctx: {},
     ("api/projects/<str:key>/releases/<str:version>/sign-off/", "post"): lambda ctx: {"reason": ""},
     ("api/projects/<str:key>/defects/<str:defect_id>/fixed/", "post"): lambda ctx: {},
+    ("api/projects/<str:key>/defects/", "post"): lambda ctx: {"title": "Sample defect"},
+    ("api/projects/<str:key>/defects/<str:defect_id>/", "patch"): lambda ctx: {"title": "Renamed"},
+    ("api/projects/<str:key>/defects/<str:defect_id>/status/", "post"): lambda ctx: {
+        "status": "closed"
+    },
+    ("api/projects/<str:key>/defects/<str:defect_id>/decision/", "post"): lambda ctx: {
+        "decision": "deferred",
+        "reason": "Moved to the next release",
+    },
     ("api/projects/<str:key>/defects/<str:defect_id>/retests/", "post"): lambda ctx: {
         "outcome": "passed",
         "evidence_file_ids": [ctx["file_id"]],

@@ -1,0 +1,233 @@
+/* ---------- list tools shared by lists inside a project ---------- */
+.list-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 16px;
+}
+.chip-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip-filters .filter {
+  min-height: 32px;
+  border: var(--hairline);
+}
+.search-input {
+  width: 240px;
+  min-height: 34px;
+  padding: 5px 10px;
+}
+
+/* ---------- defect list ---------- */
+.defect-list {
+  list-style: none;
+  padding: 0;
+}
+.defect-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'main status'
+    'meta status';
+  column-gap: 16px;
+  row-gap: 2px;
+  text-decoration: none;
+}
+.defect-main {
+  grid-area: main;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.defect-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.defect-meta {
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 14px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.defect-status {
+  grid-area: status;
+  align-self: center;
+  padding-right: 8px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .defect-list .ledger-row:hover {
+    background: var(--sheet);
+  }
+}
+
+/* ---------- defect detail ---------- */
+.defect-heading {
+  font-size: 28px;
+}
+.defect-heading .id {
+  font-size: 15px;
+  vertical-align: middle;
+}
+.defect-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  font-size: 14px;
+}
+.defect-layout {
+  display: grid;
+  grid-template-columns: 7fr 5fr;
+  gap: 48px;
+  align-items: start;
+}
+.defect-record,
+.defect-side {
+  min-width: 0;
+}
+.defect-field {
+  padding-bottom: 20px;
+}
+.defect-field .overline {
+  margin-bottom: 6px;
+}
+.pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.defect .dash-h {
+  margin: 24px 0 12px;
+}
+.defect-side .dash-h:first-child {
+  margin-top: 0;
+}
+.plain-list,
+.evidence-list,
+.retest-list,
+.history-list {
+  padding: 0;
+  list-style: none;
+}
+.plain-list li,
+.found-in {
+  padding: 4px 0;
+  font-size: 14px;
+}
+.evidence-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: var(--hairline);
+  font-size: 14px;
+}
+.evidence-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 400;
+}
+.defect-actions {
+  padding: 16px;
+  margin-bottom: 8px;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--sheet);
+}
+.defect-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.retest-list li {
+  padding: 10px 0;
+  border-bottom: var(--hairline);
+}
+.retest-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.retest-list .evidence-list li {
+  border-bottom: 0;
+  padding: 4px 0 0 24px;
+}
+.history-list li {
+  display: grid;
+  grid-template-columns: 104px 1fr;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: var(--hairline);
+  font-size: 13.5px;
+}
+.history-list time {
+  font-size: 12px;
+}
+
+/* ---------- new defect form ---------- */
+.defect-form {
+  display: grid;
+  gap: 20px;
+  max-width: 760px;
+}
+.form-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: var(--hairline);
+}
+select.input {
+  appearance: auto;
+}
+
+@media (max-width: 900px) {
+  .defect-layout {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+}
+@media (max-width: 640px) {
+  .defect-row {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'main'
+      'meta'
+      'status';
+    row-gap: 6px;
+  }
+  .defect-title {
+    white-space: normal;
+  }
+  .form-pair {
+    grid-template-columns: 1fr;
+  }
+  .search-input {
+    width: 100%;
+  }
+  .list-tools form {
+    width: 100%;
+  }
+  .history-list li {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .defect-actions .btn {
+    flex: 1 1 auto;
+  }
+}

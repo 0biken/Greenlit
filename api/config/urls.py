@@ -68,6 +68,22 @@ urlpatterns = [
         report_views.sign_off,
         name="release-sign-off",
     ),
+    path("api/projects/<str:key>/defects/", defect_views.defects, name="defects"),
+    path(
+        "api/projects/<str:key>/defects/<str:defect_id>/",
+        defect_views.defect_detail,
+        name="defect-detail",
+    ),
+    path(
+        "api/projects/<str:key>/defects/<str:defect_id>/status/",
+        defect_views.set_status,
+        name="defect-status",
+    ),
+    path(
+        "api/projects/<str:key>/defects/<str:defect_id>/decision/",
+        defect_views.decision,
+        name="defect-decision",
+    ),
     path(
         "api/projects/<str:key>/defects/<str:defect_id>/fixed/",
         defect_views.mark_fixed,

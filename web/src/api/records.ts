@@ -24,3 +24,11 @@ export type ReleaseDetail = S['ReleaseDetail']
 export type ActivityLine = S['Activity']
 export type OpenWorkRow = S['OpenWork']
 export type ProjectSummary = S['ProjectSummary']
+
+export type Severity = S['SeverityEnum']
+export type TrackerStatus = S['StatusEnum']
+/** `chip` is one of the product's status words; the server picks it from the two statuses. */
+export type DefectRow = Omit<S['DefectRow'], 'chip'> & { chip: Status }
+export type DefectDetail = Omit<S['DefectDetail'], 'chip'> & { chip: Status }
+export type EvidenceFile = S['Evidence']
+export type DefectWrite = S['DefectWrite']

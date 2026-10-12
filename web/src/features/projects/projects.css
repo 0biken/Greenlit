@@ -206,3 +206,42 @@
     font-size: 48px;
   }
 }
+
+/* ---------- sections inside a project ---------- */
+.project-nav {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--ink);
+}
+.project-nav a {
+  position: relative;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.project-nav a:first-child {
+  padding-left: 0;
+}
+.project-nav a.active {
+  color: var(--ink);
+}
+.project-nav a.active::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--ink);
+}
+.project-nav a:first-child.active::after {
+  left: 0;
+}
+@media (hover: hover) and (pointer: fine) {
+  .project-nav a:hover {
+    color: var(--ink);
+  }
+}
