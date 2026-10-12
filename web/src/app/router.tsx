@@ -7,10 +7,17 @@ import { NewDefectPage } from '../features/defects/NewDefectPage'
 import { InboxPage } from '../features/inbox/InboxPage'
 import { AcceptInvite, Welcome } from '../features/orgs/OrgPages'
 import { NotFound } from '../features/NotFound'
+import { CasePage } from '../features/plans/CasePage'
+import { PlanDiff } from '../features/plans/PlanDiff'
+import { PlanEditor } from '../features/plans/PlanEditor'
+import { PlanPage } from '../features/plans/PlanPage'
+import { PlansList } from '../features/plans/PlansList'
 import { ProjectHome } from '../features/projects/ProjectHome'
 import { ProjectsList } from '../features/projects/ProjectsList'
 import { ReleasePage } from '../features/releases/ReleasePage'
 import { ReleasesList } from '../features/releases/ReleasesList'
+import { NewRequirementPage, RequirementPage } from '../features/requirements/RequirementPage'
+import { RequirementsList } from '../features/requirements/RequirementsList'
 import { RunPage } from '../features/runs/RunPage'
 import { RunsList } from '../features/runs/RunsList'
 import { SettingsPage } from '../features/settings/SettingsPage'
@@ -50,6 +57,14 @@ export const router = createBrowserRouter([
       { path: 'projects', element: <ProjectsList /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: ':projectKey', element: <ProjectHome /> },
+      { path: ':projectKey/requirements', element: <RequirementsList /> },
+      { path: ':projectKey/requirements/new', element: <NewRequirementPage /> },
+      { path: ':projectKey/requirements/:no', element: <RequirementPage /> },
+      { path: ':projectKey/plans', element: <PlansList /> },
+      { path: ':projectKey/plans/:no', element: <PlanPage /> },
+      { path: ':projectKey/plans/:no/edit', element: <PlanEditor /> },
+      { path: ':projectKey/plans/:no/diff', element: <PlanDiff /> },
+      { path: ':projectKey/cases/:no', element: <CasePage /> },
       { path: ':projectKey/releases', element: <ReleasesList /> },
       { path: ':projectKey/releases/:version', element: <ReleasePage /> },
       { path: ':projectKey/runs', element: <RunsList /> },

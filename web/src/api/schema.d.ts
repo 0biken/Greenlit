@@ -380,6 +380,23 @@ export interface paths {
         patch: operations["projects_partial_update"];
         trace?: never;
     };
+    "/api/projects/{key}/cases/{case_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A test case: what it says now, the plans it is in, its revisions and recent results. */
+        get: operations["projects_cases_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/{key}/defects/": {
         parameters: {
             query?: never;
@@ -546,10 +563,190 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Plans with a published version, to start a run from. */
+        /** @description GET: the project's plans. POST: a new plan, which starts as an empty draft. */
         get: operations["projects_plans_list"];
         put?: never;
+        /** @description GET: the project's plans. POST: a new plan, which starts as an empty draft. */
+        post: operations["projects_plans_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/plans/{plan_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The plan: its versions, its draft if it has one, and the requirements nothing covers. */
+        get: operations["projects_plans_retrieve"];
+        put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/plans/{plan_id}/diff/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description What changed between two versions of the plan: cases added, removed and changed, down
+         *     to the step (FR-TC-03). Without `from` and `to` it compares the draft with the current
+         *     version or, when there is no draft, the current version with the one before it.
+         */
+        get: operations["projects_plans_diff_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/plans/{plan_id}/draft/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST: open a draft of a published plan to edit it (FR-TC-02); if someone already
+         *     opened one, that draft is the answer. DELETE: discard the draft; the published version is
+         *     untouched.
+         */
+        post: operations["projects_plans_draft_create"];
+        /**
+         * @description POST: open a draft of a published plan to edit it (FR-TC-02); if someone already
+         *     opened one, that draft is the answer. DELETE: discard the draft; the published version is
+         *     untouched.
+         */
+        delete: operations["projects_plans_draft_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/plans/{plan_id}/draft/approve/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Approve the draft, which publishes it as the next version (FR-PLAN-05). Owners, admins
+         *     and QA leads.
+         */
+        post: operations["projects_plans_draft_approve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/plans/{plan_id}/draft/cases/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Add a case to the draft (FR-TC-01). The answer is the whole draft, in order. */
+        post: operations["projects_plans_draft_cases_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/plans/{plan_id}/draft/cases/{case_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * @description PATCH: edit the case in the draft, or move it with `position`. DELETE: take it out of
+         *     the draft (the case and its history remain). The answer is the whole draft, in order.
+         */
+        delete: operations["projects_plans_draft_cases_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description PATCH: edit the case in the draft, or move it with `position`. DELETE: take it out of
+         *     the draft (the case and its history remain). The answer is the whole draft, in order.
+         */
+        patch: operations["projects_plans_draft_cases_partial_update"];
+        trace?: never;
+    };
+    "/api/projects/{key}/plans/{plan_id}/draft/submit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Submit the draft for a lead's approval. */
+        post: operations["projects_plans_draft_submit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/plans/{plan_id}/versions/{version}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The cases of one version, in order. `version` is a number such as 1.2, or `draft`. */
+        get: operations["projects_plans_versions_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/plans/{plan_id}/versions/{version}/roll-back/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Roll back to an earlier version: publishes a new version with that version's cases
+         *     (FR-TC-04). Owners, admins and QA leads.
+         */
+        post: operations["projects_plans_versions_roll_back_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -683,6 +880,48 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/requirements/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET: the project's requirements with their coverage. POST: add one by hand (M2-08). */
+        get: operations["projects_requirements_list"];
+        put?: never;
+        /** @description GET: the project's requirements with their coverage. POST: add one by hand (M2-08). */
+        post: operations["projects_requirements_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/requirements/{requirement_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET: one requirement with the cases that cover it and its past texts. PATCH: edit it;
+         *     changing the text raises its revision, which marks those cases Stale (FR-TC-05).
+         */
+        get: operations["projects_requirements_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description GET: one requirement with the cases that cover it and its past texts. PATCH: edit it;
+         *     changing the text raises its revision, which marks those cases Stale (FR-TC-05).
+         */
+        patch: operations["projects_requirements_partial_update"];
         trace?: never;
     };
     "/api/projects/{key}/runs/": {
@@ -868,6 +1107,10 @@ export interface components {
             text: string;
             refs: string[];
         };
+        Approve: {
+            /** @default false */
+            major: boolean;
+        };
         AttachEvidence: {
             file_ids: string[];
         };
@@ -877,6 +1120,62 @@ export interface components {
             title: string;
             age_days: number;
             owner_name: string | null;
+        };
+        CaseDetail: {
+            case: string;
+            number: number;
+            revision: number;
+            title: string;
+            preconditions: string;
+            steps: string[];
+            expected: string;
+            priority: components["schemas"]["SeverityEnum"];
+            requirements: components["schemas"]["CaseRequirement"][];
+            retired: boolean;
+            plans: components["schemas"]["CasePlan"][];
+            revisions: components["schemas"]["CaseRevisionRow"][];
+            results: components["schemas"]["CaseResultRow"][];
+        };
+        CasePlan: {
+            display_id: string;
+            number: number;
+            title: string;
+            /** @description None while it is in a draft */
+            version: string | null;
+            revision: number;
+        };
+        CaseRequirement: {
+            display_id: string;
+            number: number;
+            title: string;
+            /** @description The requirement's text changed after this case */
+            stale: boolean;
+        };
+        CaseResultRow: {
+            run: string;
+            run_no: number;
+            outcome: string;
+            /** Format: date-time */
+            at: string;
+            revision: number;
+        };
+        CaseRevisionRow: {
+            revision: number;
+            title: string;
+            /** Format: date-time */
+            at: string;
+            by: string | null;
+        };
+        CaseWrite: {
+            title: string;
+            preconditions?: string;
+            steps: string[];
+            expected: string;
+            priority?: components["schemas"]["SeverityEnum"];
+            /** @description Requirement numbers: 12 for REQ-12 */
+            requirements?: number[];
+            /** @description 1 is first */
+            position?: number;
         };
         Counts: {
             requirements: number;
@@ -990,6 +1289,29 @@ export interface components {
             found_in_result?: string | null;
             evidence_file_ids?: string[];
         };
+        DiffCase: {
+            case: string;
+            number: number;
+            title: string;
+        };
+        DiffChanged: {
+            case: string;
+            number: number;
+            title: string;
+            changes: components["schemas"]["DiffField"][];
+            steps: components["schemas"]["DiffStep"][];
+        };
+        DiffField: {
+            field: components["schemas"]["FieldEnum"];
+            before: string;
+            after: string;
+        };
+        DiffStep: {
+            op: components["schemas"]["OpEnum"];
+            text: string;
+            before: number | null;
+            after: number | null;
+        };
         Download: {
             url: string;
             /** Format: date-time */
@@ -1003,6 +1325,14 @@ export interface components {
             mime: string;
             state: string;
         };
+        /**
+         * @description * `title` - title
+         *     * `preconditions` - preconditions
+         *     * `expected` - expected
+         *     * `priority` - priority
+         * @enum {string}
+         */
+        FieldEnum: "title" | "preconditions" | "expected" | "priority";
         File: {
             /** Format: uuid */
             id: string;
@@ -1115,6 +1445,15 @@ export interface components {
             /** Format: date-time */
             finished_at: string | null;
         };
+        LinkedCase: {
+            display_id: string;
+            number: number;
+            title: string;
+            plan: string;
+            plan_no: number;
+            /** @description Written against an older text of the requirement */
+            stale: boolean;
+        };
         Me: {
             /** Format: uuid */
             id: string;
@@ -1155,6 +1494,14 @@ export interface components {
             /** Format: date */
             due: string;
         };
+        /**
+         * @description * `same` - same
+         *     * `added` - added
+         *     * `removed` - removed
+         *     * `moved` - moved
+         * @enum {string}
+         */
+        OpEnum: "same" | "added" | "removed" | "moved";
         OpenWork: {
             kind: components["schemas"]["OpenWorkKindEnum"];
             count: number;
@@ -1186,6 +1533,23 @@ export interface components {
             slug: string;
             name: string;
         };
+        /**
+         * @description * `human` - Human
+         *     * `ai` - Ai
+         * @enum {string}
+         */
+        OriginEnum: "human" | "ai";
+        PatchedCaseEdit: {
+            title?: string;
+            preconditions?: string;
+            steps?: string[];
+            expected?: string;
+            priority?: components["schemas"]["SeverityEnum"];
+            /** @description Requirement numbers: 12 for REQ-12 */
+            requirements?: number[];
+            /** @description 1 is first */
+            position?: number;
+        };
         PatchedDefectEdit: {
             title?: string;
             steps?: string;
@@ -1203,15 +1567,80 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        PatchedRequirementEdit: {
+            title?: string;
+            text?: string;
+            priority?: components["schemas"]["SeverityEnum"];
+        };
         PatchedRoleChange: {
             role?: components["schemas"]["RoleEnum"];
+        };
+        PlanActions: {
+            edit: boolean;
+            approve: boolean;
+        };
+        PlanCase: {
+            case: string;
+            number: number;
+            revision: number;
+            title: string;
+            preconditions: string;
+            steps: string[];
+            expected: string;
+            priority: components["schemas"]["SeverityEnum"];
+            requirements: components["schemas"]["CaseRequirement"][];
+        };
+        PlanCreate: {
+            title: string;
+            /** @default  */
+            scope: string;
+        };
+        PlanDetail: {
+            display_id: string;
+            number: number;
+            title: string;
+            scope: string;
+            version: string | null;
+            versions: components["schemas"]["PlanVersionRow"][];
+            draft: components["schemas"]["PlanDraft"] | null;
+            uncovered: components["schemas"]["Uncovered"][];
+            actions: components["schemas"]["PlanActions"];
+        };
+        PlanDiff: {
+            added: components["schemas"]["DiffCase"][];
+            removed: components["schemas"]["DiffCase"][];
+            changed: components["schemas"]["DiffChanged"][];
+            unchanged_count: number;
+            unchanged: components["schemas"]["DiffCase"][];
+        };
+        PlanDraft: {
+            cases: number;
+            submitted_by: string | null;
+            /** Format: date-time */
+            submitted_at: string | null;
         };
         PlanRow: {
             display_id: string;
             number: number;
             title: string;
-            version: string;
+            /** @description The current published version; none until first approved */
+            version: string | null;
             cases: number;
+            has_draft: boolean;
+            draft_submitted: boolean;
+        };
+        PlanVersionDetail: {
+            number: string;
+            state: components["schemas"]["StateDd9Enum"];
+            cases: components["schemas"]["PlanCase"][];
+        };
+        PlanVersionRow: {
+            number: string;
+            state: components["schemas"]["StateDd9Enum"];
+            cases: number;
+            approved_by: string | null;
+            /** Format: date-time */
+            approved_at: string | null;
         };
         Project: {
             /** Format: uuid */
@@ -1332,9 +1761,70 @@ export interface components {
          * @enum {string}
          */
         ReportStateEnum: "draft" | "signed";
+        RequirementActions: {
+            edit: boolean;
+        };
+        RequirementDetail: {
+            /** Format: uuid */
+            id: string;
+            display_id: string;
+            number: number;
+            title: string;
+            priority: components["schemas"]["SeverityEnum"];
+            revision: number;
+            review_state: components["schemas"]["ReviewStateEnum"];
+            origin: components["schemas"]["OriginEnum"];
+            covered: boolean;
+            cases: number;
+            stale_cases: number;
+            /** Format: date-time */
+            updated_at: string;
+            text: string;
+            created_by: string | null;
+            /** Format: date-time */
+            created_at: string;
+            linked_cases: components["schemas"]["LinkedCase"][];
+            revisions: components["schemas"]["RequirementText"][];
+            history: components["schemas"]["RequirementHistory"][];
+            actions: components["schemas"]["RequirementActions"];
+        };
+        RequirementHistory: {
+            /** Format: date-time */
+            at: string;
+            actor: string;
+            text: string;
+        };
         RequirementRef: {
             display_id: string;
             title: string;
+        };
+        RequirementRow: {
+            /** Format: uuid */
+            id: string;
+            display_id: string;
+            number: number;
+            title: string;
+            priority: components["schemas"]["SeverityEnum"];
+            revision: number;
+            review_state: components["schemas"]["ReviewStateEnum"];
+            origin: components["schemas"]["OriginEnum"];
+            covered: boolean;
+            cases: number;
+            stale_cases: number;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        RequirementText: {
+            revision: number;
+            text: string;
+            /** Format: date-time */
+            at: string;
+            by: string | null;
+        };
+        RequirementWrite: {
+            title: string;
+            text: string;
+            priority?: components["schemas"]["SeverityEnum"];
         };
         /**
          * @description * `passed` - Passed
@@ -1382,6 +1872,13 @@ export interface components {
             environment: string;
             evidence: components["schemas"]["Evidence"][];
         };
+        /**
+         * @description * `draft` - Draft
+         *     * `accepted` - Accepted
+         *     * `rejected` - Rejected
+         * @enum {string}
+         */
+        ReviewStateEnum: "draft" | "accepted" | "rejected";
         /**
          * @description * `owner` - Owner
          *     * `admin` - Admin
@@ -1541,6 +2038,13 @@ export interface components {
          * @enum {string}
          */
         State4b9Enum: "active" | "expired" | "revoked";
+        /**
+         * @description * `draft` - Draft
+         *     * `published` - Published
+         *     * `superseded` - Superseded
+         * @enum {string}
+         */
+        StateDd9Enum: "draft" | "published" | "superseded";
         StatusChange: {
             status: components["schemas"]["TrackerStatusEnum"];
         };
@@ -1561,6 +2065,11 @@ export interface components {
          * @enum {string}
          */
         TypeEnum: "needs_retest" | "open_critical" | "closed_failed_retest" | "uncovered_critical" | "unfiled_failure";
+        Uncovered: {
+            display_id: string;
+            title: string;
+            priority: components["schemas"]["SeverityEnum"];
+        };
         UploadRequest: {
             kind: components["schemas"]["UploadRequestKindEnum"];
             name: string;
@@ -2221,6 +2730,28 @@ export interface operations {
             };
         };
     };
+    projects_cases_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseDetail"];
+                };
+            };
+        };
+    };
     projects_defects_list: {
         parameters: {
             query?: {
@@ -2582,6 +3113,335 @@ export interface operations {
                     "application/json": components["schemas"]["PlanRow"][];
                 };
             };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDetail"];
+                };
+            };
+        };
+    };
+    projects_plans_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanCreate"];
+                "application/x-www-form-urlencoded": components["schemas"]["PlanCreate"];
+                "multipart/form-data": components["schemas"]["PlanCreate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanRow"][];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDetail"];
+                };
+            };
+        };
+    };
+    projects_plans_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDetail"];
+                };
+            };
+        };
+    };
+    projects_plans_diff_retrieve: {
+        parameters: {
+            query?: {
+                /** @description A version number. Default: see below */
+                from?: string;
+                /** @description A version number, or draft. Default: see below */
+                to?: string;
+                /** @description Also list the cases that did not change */
+                unchanged?: boolean;
+            };
+            header?: never;
+            path: {
+                key: string;
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDiff"];
+                };
+            };
+        };
+    };
+    projects_plans_draft_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDetail"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDetail"];
+                };
+            };
+        };
+    };
+    projects_plans_draft_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDetail"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDetail"];
+                };
+            };
+        };
+    };
+    projects_plans_draft_approve_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Approve"];
+                "application/x-www-form-urlencoded": components["schemas"]["Approve"];
+                "multipart/form-data": components["schemas"]["Approve"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDetail"];
+                };
+            };
+        };
+    };
+    projects_plans_draft_cases_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CaseWrite"];
+                "application/x-www-form-urlencoded": components["schemas"]["CaseWrite"];
+                "multipart/form-data": components["schemas"]["CaseWrite"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanVersionDetail"];
+                };
+            };
+        };
+    };
+    projects_plans_draft_cases_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                key: string;
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    projects_plans_draft_cases_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                key: string;
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedCaseEdit"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedCaseEdit"];
+                "multipart/form-data": components["schemas"]["PatchedCaseEdit"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanVersionDetail"];
+                };
+            };
+        };
+    };
+    projects_plans_draft_submit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDetail"];
+                };
+            };
+        };
+    };
+    projects_plans_versions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                plan_id: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanVersionDetail"];
+                };
+            };
+        };
+    };
+    projects_plans_versions_roll_back_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                plan_id: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDetail"];
+                };
+            };
         };
     };
     projects_releases_list: {
@@ -2825,6 +3685,130 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReleaseDetail"];
+                };
+            };
+        };
+    };
+    projects_requirements_list: {
+        parameters: {
+            query?: {
+                coverage?: "covered" | "uncovered";
+                priority?: "critical" | "high" | "low" | "medium";
+                /** @description Part of the title or text, or a REQ number */
+                q?: string;
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementRow"][];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementDetail"];
+                };
+            };
+        };
+    };
+    projects_requirements_create: {
+        parameters: {
+            query?: {
+                coverage?: "covered" | "uncovered";
+                priority?: "critical" | "high" | "low" | "medium";
+                /** @description Part of the title or text, or a REQ number */
+                q?: string;
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequirementWrite"];
+                "application/x-www-form-urlencoded": components["schemas"]["RequirementWrite"];
+                "multipart/form-data": components["schemas"]["RequirementWrite"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementRow"][];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementDetail"];
+                };
+            };
+        };
+    };
+    projects_requirements_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                requirement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementDetail"];
+                };
+            };
+        };
+    };
+    projects_requirements_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                requirement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedRequirementEdit"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedRequirementEdit"];
+                "multipart/form-data": components["schemas"]["PatchedRequirementEdit"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementDetail"];
                 };
             };
         };

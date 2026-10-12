@@ -102,3 +102,20 @@ def test_running_the_seed_again_adds_nothing():
     again = seed()
     assert counts() == before
     assert "/shared/" not in again and "Added sample records" not in again
+
+
+def test_the_seed_leaves_a_plan_with_history_and_a_draft_awaiting_approval():
+    from apps.plans.diff import diff_versions
+    from apps.plans.models import PlanVersion, TestPlan
+
+    seed()
+    with org_scope(karma_id()):
+        plan = TestPlan.objects.select_related("current_version").get(title="Sign-in")
+        versions = {v.number: v for v in PlanVersion.objects.filter(plan=plan)}
+        assert plan.current_version.number == "1.1"
+        assert sorted(versions) == ["", "1.0", "1.1"]
+        assert versions[""].submitted_at is not None
+        assert (versions["1.0"].state, versions["1.1"].state) == ("superseded", "published")
+        diff = diff_versions(versions["1.0"], versions["1.1"])
+        assert (len(diff["added"]), len(diff["removed"]), len(diff["changed"])) == (1, 0, 1)
+        assert "moved" in {step["op"] for step in diff["changed"][0]["steps"]}

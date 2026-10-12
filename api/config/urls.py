@@ -14,7 +14,9 @@ from apps.core.views import (
 from apps.defects import views as defect_views
 from apps.files import views as file_views
 from apps.inbox import views as inbox_views
+from apps.plans import views as plan_views
 from apps.reports import views as report_views
+from apps.requirements import views as requirement_views
 from apps.runs import views as run_views
 
 urlpatterns = [
@@ -59,7 +61,49 @@ urlpatterns = [
     path("api/inbox/<str:item_id>/snooze/", inbox_views.snooze, name="inbox-snooze"),
     path("api/inbox/<str:item_id>/unsnooze/", inbox_views.unsnooze, name="inbox-unsnooze"),
     path("api/projects/<str:key>/summary/", report_views.summary, name="project-summary"),
-    path("api/projects/<str:key>/plans/", run_views.plans, name="plans"),
+    path(
+        "api/projects/<str:key>/requirements/", requirement_views.requirements, name="requirements"
+    ),
+    path(
+        "api/projects/<str:key>/requirements/<str:requirement_id>/",
+        requirement_views.requirement_detail,
+        name="requirement-detail",
+    ),
+    path("api/projects/<str:key>/plans/", plan_views.plans, name="plans"),
+    path("api/projects/<str:key>/plans/<str:plan_id>/", plan_views.plan_detail, name="plan-detail"),
+    path("api/projects/<str:key>/plans/<str:plan_id>/draft/", plan_views.draft, name="plan-draft"),
+    path(
+        "api/projects/<str:key>/plans/<str:plan_id>/draft/cases/",
+        plan_views.draft_cases,
+        name="plan-draft-cases",
+    ),
+    path(
+        "api/projects/<str:key>/plans/<str:plan_id>/draft/cases/<str:case_id>/",
+        plan_views.draft_case,
+        name="plan-draft-case",
+    ),
+    path(
+        "api/projects/<str:key>/plans/<str:plan_id>/draft/submit/",
+        plan_views.submit,
+        name="plan-submit",
+    ),
+    path(
+        "api/projects/<str:key>/plans/<str:plan_id>/draft/approve/",
+        plan_views.approve,
+        name="plan-approve",
+    ),
+    path("api/projects/<str:key>/plans/<str:plan_id>/diff/", plan_views.diff, name="plan-diff"),
+    path(
+        "api/projects/<str:key>/plans/<str:plan_id>/versions/<str:version>/",
+        plan_views.version_detail,
+        name="plan-version",
+    ),
+    path(
+        "api/projects/<str:key>/plans/<str:plan_id>/versions/<str:version>/roll-back/",
+        plan_views.roll_back,
+        name="plan-roll-back",
+    ),
+    path("api/projects/<str:key>/cases/<str:case_id>/", plan_views.case_detail, name="case-detail"),
     path("api/projects/<str:key>/releases/", run_views.releases, name="releases"),
     path(
         "api/projects/<str:key>/releases/<str:version>/cancel/",

@@ -95,14 +95,14 @@ export function DefectDetailPage() {
             <>
               <h2 className="overline dash-h">Where it was found</h2>
               <p className="found-in">
-                <IdTag id={d.found_in.run} to={`${base}/runs/${d.found_in.run_no}`} /> <IdTag id={d.found_in.case} />{' '}
+                <IdTag id={d.found_in.run} to={`${base}/runs/${d.found_in.run_no}`} /> <IdTag id={d.found_in.case} to={`${base}/cases/${Number(d.found_in.case.split('-')[1])}`} />{' '}
                 {d.found_in.case_title}
               </p>
               {d.requirements.length ? (
                 <ul className="plain-list">
                   {d.requirements.map((r) => (
                     <li key={r.display_id}>
-                      <IdTag id={r.display_id} /> {r.title}
+                      <IdTag id={r.display_id} to={`${base}/requirements/${Number(r.display_id.split('-')[1])}`} /> {r.title}
                     </li>
                   ))}
                 </ul>

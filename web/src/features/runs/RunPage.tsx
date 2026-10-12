@@ -300,7 +300,7 @@ function RunScreen({ projectKey, run }: { projectKey: string; run: RunDetail }) 
               }}
             >
               <div className="run-current-head">
-                <IdTag id={current.case} />
+                <IdTag id={current.case} to={`${base}/cases/${Number(current.case.split('-')[1])}`} />
                 <StatusChip status={BY_ID[current.outcome].status} />
                 <span className="faint small">
                   {cursor + 1} of {cases.length}

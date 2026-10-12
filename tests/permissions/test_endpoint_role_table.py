@@ -107,6 +107,35 @@ SAMPLES = {
         "decision": "deferred",
         "reason": "Moved to the next release",
     },
+    ("api/projects/<str:key>/requirements/", "post"): lambda ctx: {
+        "title": "Sample requirement",
+        "text": "Something must be true.",
+    },
+    ("api/projects/<str:key>/requirements/<str:requirement_id>/", "patch"): lambda ctx: {
+        "text": f"Changed {next(_counter)} times."
+    },
+    ("api/projects/<str:key>/plans/", "post"): lambda ctx: {"title": "Another plan"},
+    ("api/projects/<str:key>/plans/<str:plan_id>/draft/", "post"): lambda ctx: {},
+    ("api/projects/<str:key>/plans/<str:plan_id>/draft/", "delete"): lambda ctx: {},
+    ("api/projects/<str:key>/plans/<str:plan_id>/draft/cases/", "post"): lambda ctx: {
+        "title": "Another case",
+        "steps": ["Do it"],
+        "expected": "It works.",
+    },
+    (
+        "api/projects/<str:key>/plans/<str:plan_id>/draft/cases/<str:case_id>/",
+        "patch",
+    ): lambda ctx: {"title": "Renamed case"},
+    (
+        "api/projects/<str:key>/plans/<str:plan_id>/draft/cases/<str:case_id>/",
+        "delete",
+    ): lambda ctx: {},
+    ("api/projects/<str:key>/plans/<str:plan_id>/draft/submit/", "post"): lambda ctx: {},
+    ("api/projects/<str:key>/plans/<str:plan_id>/draft/approve/", "post"): lambda ctx: {},
+    (
+        "api/projects/<str:key>/plans/<str:plan_id>/versions/<str:version>/roll-back/",
+        "post",
+    ): lambda ctx: {},
     ("api/projects/<str:key>/defects/<str:defect_id>/retests/", "post"): lambda ctx: {
         "outcome": "passed",
         "evidence_file_ids": [ctx["file_id"]],
@@ -219,6 +248,31 @@ def _org_with_a_member_of_each_role():
             )
         return str(invitation.id)
 
+    last_case: dict = {"no": "1"}
+
+    def fresh_plan(drafted: bool = True) -> str:
+        """A plan at version 1.0 with one case and, by default, an open draft of it, so each
+        call that changes a draft has its own to change."""
+        with org_scope(org.id):
+            made = plans.create_plan(project, None, title=f"Plan {next(_counter)}")
+            revision = plans.add_case(
+                plans.draft_of(made), None, title="A case", steps=["Do it"], expected="Works."
+            )
+            plans.approve(plans.draft_of(made), None)
+            if drafted:
+                plans.open_draft(made, None)
+            last_case["no"] = str(revision.test_case.display_no)
+        return str(made.display_no)
+
+    # A plan with two versions and no draft: rolling back to 1.0 is valid any number of times.
+    rolled = fresh_plan()
+    with org_scope(org.id):
+        twice = plans.TestPlan.objects.get(project=project, display_no=int(rolled))
+        case = plans.TestCase.objects.get(project=project, display_no=int(last_case["no"]))
+        plans.edit_case(plans.draft_of(twice), case, None, title="A changed case")
+        plans.approve(plans.draft_of(twice), None)
+    plan_base = "api/projects/<str:key>/plans/<str:plan_id>/"
+
     def fresh_link() -> str:
         with org_scope(org.id):
             return str(create_link(signed, None)[0].pk)
@@ -226,6 +280,11 @@ def _org_with_a_member_of_each_role():
     signed_release = {"version": "6.0", "link_id": fresh_link}
     ctx = {
         "route_params": {
+            plan_base + "versions/<str:version>/": {"version": "draft"},
+            plan_base + "versions/<str:version>/roll-back/": {
+                "plan_id": rolled,
+                "version": "1.0",
+            },
             "api/projects/<str:key>/releases/<str:version>/report.pdf": signed_release,
             "api/projects/<str:key>/releases/<str:version>/share-links/": signed_release,
             "api/projects/<str:key>/releases/<str:version>/share-links/<uuid:link_id>/": (
@@ -245,6 +304,10 @@ def _org_with_a_member_of_each_role():
             "invite_id": fresh_invitation,
             "version": fresh_release,
             "defect_id": fresh_fixed_defect,
+            "requirement_id": str(requirement.display_no),
+            # `plan_id` is worked out before `case_id`, which names that plan's own case.
+            "plan_id": fresh_plan,
+            "case_id": lambda: last_case["no"],
             "item_id": f"requirement.{requirement.pk}",
         },
     }

@@ -39,14 +39,6 @@ class ReleaseCreateSerializer(serializers.Serializer):
     due = serializers.DateField(required=False, allow_null=True)
 
 
-class PlanRowSerializer(serializers.Serializer):
-    display_id = serializers.CharField()
-    number = serializers.IntegerField()
-    title = serializers.CharField()
-    version = serializers.CharField()
-    cases = serializers.IntegerField()
-
-
 class RunRowSerializer(serializers.Serializer):
     display_id = serializers.CharField()
     number = serializers.IntegerField()
@@ -160,7 +152,7 @@ def _detail(run: TestRun) -> Response:
     return Response(RunDetailSerializer(queries.run_detail(run)).data)
 
 
-# --- releases and plans ----------------------------------------------------------------------
+# --- releases --------------------------------------------------------------------------------
 
 
 @extend_schema(
@@ -206,14 +198,6 @@ def cancel_release(request, key: str, version: str):
         raise NotFound()
     _run(services.cancel_release, release, request.user)
     return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-@extend_schema(responses=PlanRowSerializer(many=True))
-@api_view(["GET"])
-@permission_classes([*requires(Action.VIEW), flag_required("plan")])
-def plans(request, key: str):
-    """Plans with a published version, to start a run from."""
-    return Response(PlanRowSerializer(queries.plans(project_or_404(request, key)), many=True).data)
 
 
 # --- runs ------------------------------------------------------------------------------------

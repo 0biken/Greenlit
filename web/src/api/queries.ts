@@ -1,15 +1,24 @@
 import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, api, download, getCurrentOrg } from './client'
 import type {
+  CaseDetail,
+  CaseEdit,
+  CaseWrite,
   DefectDetail,
   DefectRow,
   DefectWrite,
   Inbox,
   Outcome,
+  PlanDetail,
+  PlanDiff,
   PlanRow,
+  PlanVersionDetail,
   ProjectSummary,
   ReleaseDetail,
   ReleaseRow,
+  RequirementDetail,
+  RequirementRow,
+  RequirementWrite,
   RunDetail,
   RunRow,
   ShareLink,
@@ -49,6 +58,15 @@ export const keys = {
   defect: (key: string, id: string) => ['org', org(), 'project', key, 'defect', id] as const,
   releases: (key: string) => ['org', org(), 'project', key, 'releases'] as const,
   plans: (key: string) => ['org', org(), 'project', key, 'plans'] as const,
+  plan: (key: string, id: string) => ['org', org(), 'project', key, 'plan', id] as const,
+  planVersion: (key: string, id: string, version: string) =>
+    ['org', org(), 'project', key, 'plan', id, 'version', version] as const,
+  planDiff: (key: string, id: string, from: string, to: string) =>
+    ['org', org(), 'project', key, 'plan', id, 'diff', from, to] as const,
+  testCase: (key: string, id: string) => ['org', org(), 'project', key, 'case', id] as const,
+  requirements: (key: string, filters: RequirementFilters) =>
+    ['org', org(), 'project', key, 'requirements', filters] as const,
+  requirement: (key: string, id: string) => ['org', org(), 'project', key, 'requirement', id] as const,
   runs: (key: string) => ['org', org(), 'project', key, 'runs'] as const,
   run: (key: string, id: string) => ['org', org(), 'project', key, 'run', id] as const,
   shareLinks: (key: string, version: string) => ['org', org(), 'project', key, 'release', version, 'links'] as const,
@@ -343,3 +361,129 @@ export const useSharedReport = (token: string) =>
 
 export const downloadSharedPdf = (token: string) =>
   download(`/api/shared/${encodeURIComponent(token)}/report.pdf`, { noOrg: true })
+
+// ---- requirements ------------------------------------------------------------------------------
+
+export type RequirementFilters = { q?: string; priority?: string; coverage?: string }
+
+const requirementUrl = (key: string, id: string) => `${project(key)}/requirements/${encodeURIComponent(id)}/`
+
+export const useRequirements = (key: string, filters: RequirementFilters = {}, enabled = true) =>
+  useQuery({
+    queryKey: keys.requirements(key, filters),
+    queryFn: () => {
+      const query = new URLSearchParams(Object.entries(filters).filter(([, v]) => v) as [string, string][])
+      return api<RequirementRow[]>(`${project(key)}/requirements/${query.size ? `?${query}` : ''}`)
+    },
+    placeholderData: (previous) => previous,
+    enabled,
+  })
+
+export const useRequirement = (key: string, id: string) =>
+  useQuery({ queryKey: keys.requirement(key, id), queryFn: () => api<RequirementDetail>(requirementUrl(key, id)) })
+
+export function useCreateRequirement(key: string) {
+  const invalidate = useInvalidateWork()
+  return useMutation({
+    mutationFn: (body: RequirementWrite) =>
+      api<RequirementDetail>(`${project(key)}/requirements/`, { method: 'POST', body }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useEditRequirement(key: string, id: string) {
+  const invalidate = useInvalidateWork()
+  return useMutation({
+    mutationFn: (body: Partial<RequirementWrite>) =>
+      api<RequirementDetail>(requirementUrl(key, id), { method: 'PATCH', body }),
+    onSuccess: invalidate,
+  })
+}
+
+// ---- plans, versions and cases -----------------------------------------------------------------
+
+const planUrl = (key: string, id: string | number) => `${project(key)}/plans/${encodeURIComponent(id)}/`
+
+export const usePlan = (key: string, id: string) =>
+  useQuery({ queryKey: keys.plan(key, id), queryFn: () => api<PlanDetail>(planUrl(key, id)) })
+
+export const usePlanVersion = (key: string, id: string, version: string, enabled = true) =>
+  useQuery({
+    queryKey: keys.planVersion(key, id, version),
+    queryFn: () => api<PlanVersionDetail>(`${planUrl(key, id)}versions/${encodeURIComponent(version)}/`),
+    enabled,
+  })
+
+export const usePlanDiff = (key: string, id: string, from: string, to: string, unchanged: boolean) =>
+  useQuery({
+    queryKey: [...keys.planDiff(key, id, from, to), unchanged],
+    queryFn: () => {
+      const query = new URLSearchParams({ from, to, ...(unchanged ? { unchanged: '1' } : {}) })
+      return api<PlanDiff>(`${planUrl(key, id)}diff/?${query}`)
+    },
+    enabled: Boolean(from && to),
+  })
+
+export const useCase = (key: string, id: string) =>
+  useQuery({
+    queryKey: keys.testCase(key, id),
+    queryFn: () => api<CaseDetail>(`${project(key)}/cases/${encodeURIComponent(id)}/`),
+  })
+
+export function useCreatePlan(key: string) {
+  const invalidate = useInvalidateWork()
+  return useMutation({
+    mutationFn: (body: { title: string; scope?: string }) =>
+      api<PlanDetail>(`${project(key)}/plans/`, { method: 'POST', body }),
+    onSuccess: invalidate,
+  })
+}
+
+/** Open, discard, submit, approve and roll back: each answers with the plan as it now is. */
+export function usePlanAction(key: string, id: string) {
+  const invalidate = useInvalidateWork()
+  return useMutation({
+    mutationFn: (action: PlanAction) => {
+      const base = planUrl(key, id)
+      switch (action.do) {
+        case 'open':
+          return api<PlanDetail>(`${base}draft/`, { method: 'POST' })
+        case 'discard':
+          return api<PlanDetail>(`${base}draft/`, { method: 'DELETE' })
+        case 'submit':
+          return api<PlanDetail>(`${base}draft/submit/`, { method: 'POST' })
+        case 'approve':
+          return api<PlanDetail>(`${base}draft/approve/`, { method: 'POST', body: { major: action.major } })
+        case 'roll_back':
+          return api<PlanDetail>(`${base}versions/${encodeURIComponent(action.version)}/roll-back/`, {
+            method: 'POST',
+          })
+      }
+    },
+    onSuccess: invalidate,
+  })
+}
+
+export type PlanAction =
+  | { do: 'open' | 'discard' | 'submit' }
+  | { do: 'approve'; major: boolean }
+  | { do: 'roll_back'; version: string }
+
+/** Add, edit, move or remove a case in the plan's draft. Each answers with the whole draft. */
+export function useDraftCase(key: string, id: string) {
+  const invalidate = useInvalidateWork()
+  return useMutation({
+    mutationFn: (change: DraftChange) => {
+      const base = `${planUrl(key, id)}draft/cases/`
+      if (change.do === 'add') return api<PlanVersionDetail>(base, { method: 'POST', body: change.body })
+      if (change.do === 'remove') return api<PlanVersionDetail>(`${base}${change.case}/`, { method: 'DELETE' })
+      return api<PlanVersionDetail>(`${base}${change.case}/`, { method: 'PATCH', body: change.body })
+    },
+    onSuccess: invalidate,
+  })
+}
+
+export type DraftChange =
+  | { do: 'add'; body: CaseWrite }
+  | { do: 'edit'; case: number; body: CaseEdit }
+  | { do: 'remove'; case: number }

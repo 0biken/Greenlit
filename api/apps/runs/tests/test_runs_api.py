@@ -62,8 +62,10 @@ def test_releases_are_listed_created_and_cancelled(lab):
 def test_only_plans_with_a_published_version_can_be_run(lab):
     lab.plan(title="Still a draft", cases=[("Unapproved", [])], approve=False)
     plans = lab.call(lab.viewer, "get", f"{P}/plans/").json()
-    assert plans == [
-        {"display_id": "TP-1", "number": 1, "title": "Checkout", "version": "1.0", "cases": 3}
+    # The list shows every plan; one with no approved version has no `version` to run.
+    assert [(p["display_id"], p["version"], p["cases"]) for p in plans] == [
+        ("TP-1", "1.0", 3),
+        ("TP-2", None, 1),
     ]
     assert lab.start(plan=2).status_code == 400
 

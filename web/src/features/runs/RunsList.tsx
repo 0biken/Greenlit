@@ -103,7 +103,9 @@ function StartRunDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const navigate = useNavigate()
-  const plans = usePlans(projectKey, open)
+  const all = usePlans(projectKey, open)
+  // Only a plan with an approved version can be run.
+  const plans = { ...all, data: all.data?.filter((p) => p.version) }
   const releases = useReleases(projectKey)
   const start = useStartRun(projectKey)
   const openReleases = releases.data?.filter((r) => r.state === 'open') ?? []

@@ -202,6 +202,9 @@ def test_no_alpha_response_contains_any_of_bravos_data(world):
                         "file_id": str(world.alpha_file.id),
                         "version": "1.0",
                         "defect_id": str(world.alpha_spine["defect"].pk),
+                        "requirement_id": str(world.alpha_spine["requirement"].pk),
+                        "plan_id": str(world.alpha_spine["plan"].pk),
+                        "case_id": str(world.alpha_spine["case"].pk),
                         "run_id": str(world.alpha_spine["run"].pk),
                         "token": world.alpha_spine["share_token"],
                         "link_id": str(world.alpha_spine["share_link"].pk),
@@ -238,6 +241,9 @@ def test_bravos_identifiers_are_not_found_under_alpha(world):
                         "file_id": str(world.bravo_file.id),
                         "version": "1.0",
                         "defect_id": str(world.bravo_spine["defect"].pk),
+                        "requirement_id": str(world.bravo_spine["requirement"].pk),
+                        "plan_id": str(world.bravo_spine["plan"].pk),
+                        "case_id": str(world.bravo_spine["case"].pk),
                         "run_id": str(world.bravo_spine["run"].pk),
                         "token": world.bravo_spine["share_token"],
                         "link_id": str(world.bravo_spine["share_link"].pk),
@@ -360,3 +366,60 @@ def test_alpha_cannot_act_on_bravos_defects_or_inbox_items_under_its_own_project
     assert Retest.objects.filter(defect_id=bravo["defect"].pk).count() == 1
     assert Defect.objects.get(pk=bravo["defect"].pk).qa_status == bravo["defect"].qa_status
     assert Snooze.objects.count() == 1
+
+
+def test_alpha_cannot_reach_bravos_requirements_plans_or_cases_under_its_own_project(world):
+    """Bravo's requirement, plan and case IDs, named under Alpha's own project key: every read
+    and write is not found, Bravo's records do not change, and Bravo's requirement cannot be
+    linked to one of Alpha's own cases."""
+    from apps.plans.models import CaseRevision, PlanVersion
+    from apps.requirements.models import Requirement
+
+    alpha, bravo = world.alpha_spine, world.bravo_spine
+    as_app_role()
+    client = client_for(world.alpha_owner)
+    headers = {"X-Org": "alpha-iso"}
+    base = "/api/projects/shared"
+    requirement, plan, case = (str(bravo[k].pk) for k in ("requirement", "plan", "case"))
+    calls = [
+        ("get", f"{base}/requirements/{requirement}/", None),
+        ("patch", f"{base}/requirements/{requirement}/", {"text": "Taken over"}),
+        ("get", f"{base}/plans/{plan}/", None),
+        ("get", f"{base}/plans/{plan}/versions/1.0/", None),
+        ("get", f"{base}/plans/{plan}/diff/", None),
+        ("post", f"{base}/plans/{plan}/draft/", {}),
+        ("post", f"{base}/plans/{plan}/versions/1.0/roll-back/", {}),
+        ("get", f"{base}/cases/{case}/", None),
+    ]
+    for method, url, body in calls:
+        response = getattr(client, method)(
+            url, data=body, content_type="application/json", headers=headers
+        )
+        assert response.status_code == 404, f"{method.upper()} {url}: {response.status_code}"
+
+    # Alpha's own plan: open a draft, then try to bring Bravo's case and requirement into it.
+    own = f"{base}/plans/{alpha['plan'].pk}"
+    opened = client.post(f"{own}/draft/", data={}, content_type="application/json", headers=headers)
+    assert opened.status_code == 201
+    stolen = client.patch(
+        f"{own}/draft/cases/{case}/",
+        data={"title": "Taken over"},
+        content_type="application/json",
+        headers=headers,
+    )
+    assert stolen.status_code == 404
+    # Both organisations have a REQ-1; the number resolves to Alpha's own, never Bravo's.
+    linked = client.patch(
+        f"{own}/draft/cases/{alpha['case'].pk}/",
+        data={"requirements": [1], "title": "Alpha pays by card, again"},
+        content_type="application/json",
+        headers=headers,
+    )
+    assert linked.status_code == 200
+    for marker in BRAVO_MARKERS:
+        assert marker not in linked.content.decode()
+
+    set_scope(world.bravo.id, world.bravo_owner.pk)
+    assert Requirement.objects.get().revision == 1
+    assert not PlanVersion.objects.filter(state="draft").exists()
+    assert CaseRevision.objects.count() == 1

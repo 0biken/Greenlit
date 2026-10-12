@@ -606,6 +606,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProjectDetail'
           description: ''
+  /api/projects/{key}/cases/{case_id}/:
+    get:
+      operationId: projects_cases_retrieve
+      description: 'A test case: what it says now, the plans it is in, its revisions
+        and recent results.'
+      parameters:
+      - in: path
+        name: case_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseDetail'
+          description: ''
   /api/projects/{key}/defects/:
     get:
       operationId: projects_defects_list
@@ -1064,7 +1091,8 @@ paths:
   /api/projects/{key}/plans/:
     get:
       operationId: projects_plans_list
-      description: Plans with a published version, to start a run from.
+      description: 'GET: the project''s plans. POST: a new plan, which starts as an
+        empty draft.'
       parameters:
       - in: path
         name: key
@@ -1083,6 +1111,434 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/PlanRow'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanDetail'
+          description: ''
+    post:
+      operationId: projects_plans_create
+      description: 'GET: the project''s plans. POST: a new plan, which starts as an
+        empty draft.'
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PlanCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PlanCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlanRow'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanDetail'
+          description: ''
+  /api/projects/{key}/plans/{plan_id}/:
+    get:
+      operationId: projects_plans_retrieve
+      description: 'The plan: its versions, its draft if it has one, and the requirements
+        nothing covers.'
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: plan_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanDetail'
+          description: ''
+  /api/projects/{key}/plans/{plan_id}/diff/:
+    get:
+      operationId: projects_plans_diff_retrieve
+      description: |-
+        What changed between two versions of the plan: cases added, removed and changed, down
+        to the step (FR-TC-03). Without `from` and `to` it compares the draft with the current
+        version or, when there is no draft, the current version with the one before it.
+      parameters:
+      - in: query
+        name: from
+        schema:
+          type: string
+        description: 'A version number. Default: see below'
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: plan_id
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: to
+        schema:
+          type: string
+        description: 'A version number, or draft. Default: see below'
+      - in: query
+        name: unchanged
+        schema:
+          type: boolean
+        description: Also list the cases that did not change
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanDiff'
+          description: ''
+  /api/projects/{key}/plans/{plan_id}/draft/:
+    post:
+      operationId: projects_plans_draft_create
+      description: |-
+        POST: open a draft of a published plan to edit it (FR-TC-02); if someone already
+        opened one, that draft is the answer. DELETE: discard the draft; the published version is
+        untouched.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: plan_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanDetail'
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanDetail'
+          description: ''
+    delete:
+      operationId: projects_plans_draft_destroy
+      description: |-
+        POST: open a draft of a published plan to edit it (FR-TC-02); if someone already
+        opened one, that draft is the answer. DELETE: discard the draft; the published version is
+        untouched.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: plan_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanDetail'
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanDetail'
+          description: ''
+  /api/projects/{key}/plans/{plan_id}/draft/approve/:
+    post:
+      operationId: projects_plans_draft_approve_create
+      description: |-
+        Approve the draft, which publishes it as the next version (FR-PLAN-05). Owners, admins
+        and QA leads.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: plan_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Approve'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Approve'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Approve'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanDetail'
+          description: ''
+  /api/projects/{key}/plans/{plan_id}/draft/cases/:
+    post:
+      operationId: projects_plans_draft_cases_create
+      description: Add a case to the draft (FR-TC-01). The answer is the whole draft,
+        in order.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: plan_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaseWrite'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CaseWrite'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CaseWrite'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanVersionDetail'
+          description: ''
+  /api/projects/{key}/plans/{plan_id}/draft/cases/{case_id}/:
+    patch:
+      operationId: projects_plans_draft_cases_partial_update
+      description: |-
+        PATCH: edit the case in the draft, or move it with `position`. DELETE: take it out of
+        the draft (the case and its history remain). The answer is the whole draft, in order.
+      parameters:
+      - in: path
+        name: case_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: plan_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCaseEdit'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCaseEdit'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCaseEdit'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanVersionDetail'
+          description: ''
+    delete:
+      operationId: projects_plans_draft_cases_destroy
+      description: |-
+        PATCH: edit the case in the draft, or move it with `position`. DELETE: take it out of
+        the draft (the case and its history remain). The answer is the whole draft, in order.
+      parameters:
+      - in: path
+        name: case_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: plan_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/projects/{key}/plans/{plan_id}/draft/submit/:
+    post:
+      operationId: projects_plans_draft_submit_create
+      description: Submit the draft for a lead's approval.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: plan_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanDetail'
+          description: ''
+  /api/projects/{key}/plans/{plan_id}/versions/{version}/:
+    get:
+      operationId: projects_plans_versions_retrieve
+      description: The cases of one version, in order. `version` is a number such
+        as 1.2, or `draft`.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: plan_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: version
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanVersionDetail'
+          description: ''
+  /api/projects/{key}/plans/{plan_id}/versions/{version}/roll-back/:
+    post:
+      operationId: projects_plans_versions_roll_back_create
+      description: |-
+        Roll back to an earlier version: publishes a new version with that version's cases
+        (FR-TC-04). Owners, admins and QA leads.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: plan_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: version
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanDetail'
           description: ''
   /api/projects/{key}/releases/:
     get:
@@ -1379,6 +1835,185 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReleaseDetail'
+          description: ''
+  /api/projects/{key}/requirements/:
+    get:
+      operationId: projects_requirements_list
+      description: 'GET: the project''s requirements with their coverage. POST: add
+        one by hand (M2-08).'
+      parameters:
+      - in: query
+        name: coverage
+        schema:
+          type: string
+          enum:
+          - covered
+          - uncovered
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: priority
+        schema:
+          type: string
+          enum:
+          - critical
+          - high
+          - low
+          - medium
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Part of the title or text, or a REQ number
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RequirementRow'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequirementDetail'
+          description: ''
+    post:
+      operationId: projects_requirements_create
+      description: 'GET: the project''s requirements with their coverage. POST: add
+        one by hand (M2-08).'
+      parameters:
+      - in: query
+        name: coverage
+        schema:
+          type: string
+          enum:
+          - covered
+          - uncovered
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: priority
+        schema:
+          type: string
+          enum:
+          - critical
+          - high
+          - low
+          - medium
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Part of the title or text, or a REQ number
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequirementWrite'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RequirementWrite'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RequirementWrite'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RequirementRow'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequirementDetail'
+          description: ''
+  /api/projects/{key}/requirements/{requirement_id}/:
+    get:
+      operationId: projects_requirements_retrieve
+      description: |-
+        GET: one requirement with the cases that cover it and its past texts. PATCH: edit it;
+        changing the text raises its revision, which marks those cases Stale (FR-TC-05).
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: requirement_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequirementDetail'
+          description: ''
+    patch:
+      operationId: projects_requirements_partial_update
+      description: |-
+        GET: one requirement with the cases that cover it and its past texts. PATCH: edit it;
+        changing the text raises its revision, which marks those cases Stale (FR-TC-05).
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: requirement_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRequirementEdit'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRequirementEdit'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRequirementEdit'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequirementDetail'
           description: ''
   /api/projects/{key}/runs/:
     get:
@@ -1705,6 +2340,12 @@ components:
       - at
       - refs
       - text
+    Approve:
+      type: object
+      properties:
+        major:
+          type: boolean
+          default: false
     AttachEvidence:
       type: object
       properties:
@@ -1737,6 +2378,169 @@ components:
       - owner_name
       - title
       - type
+    CaseDetail:
+      type: object
+      properties:
+        case:
+          type: string
+        number:
+          type: integer
+        revision:
+          type: integer
+        title:
+          type: string
+        preconditions:
+          type: string
+        steps:
+          type: array
+          items:
+            type: string
+        expected:
+          type: string
+        priority:
+          $ref: '#/components/schemas/SeverityEnum'
+        requirements:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaseRequirement'
+        retired:
+          type: boolean
+        plans:
+          type: array
+          items:
+            $ref: '#/components/schemas/CasePlan'
+        revisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaseRevisionRow'
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaseResultRow'
+      required:
+      - case
+      - expected
+      - number
+      - plans
+      - preconditions
+      - priority
+      - requirements
+      - results
+      - retired
+      - revision
+      - revisions
+      - steps
+      - title
+    CasePlan:
+      type: object
+      properties:
+        display_id:
+          type: string
+        number:
+          type: integer
+        title:
+          type: string
+        version:
+          type: string
+          nullable: true
+          description: None while it is in a draft
+        revision:
+          type: integer
+      required:
+      - display_id
+      - number
+      - revision
+      - title
+      - version
+    CaseRequirement:
+      type: object
+      properties:
+        display_id:
+          type: string
+        number:
+          type: integer
+        title:
+          type: string
+        stale:
+          type: boolean
+          description: The requirement's text changed after this case
+      required:
+      - display_id
+      - number
+      - stale
+      - title
+    CaseResultRow:
+      type: object
+      properties:
+        run:
+          type: string
+        run_no:
+          type: integer
+        outcome:
+          type: string
+        at:
+          type: string
+          format: date-time
+        revision:
+          type: integer
+      required:
+      - at
+      - outcome
+      - revision
+      - run
+      - run_no
+    CaseRevisionRow:
+      type: object
+      properties:
+        revision:
+          type: integer
+        title:
+          type: string
+        at:
+          type: string
+          format: date-time
+        by:
+          type: string
+          nullable: true
+      required:
+      - at
+      - by
+      - revision
+      - title
+    CaseWrite:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        preconditions:
+          type: string
+          maxLength: 5000
+        steps:
+          type: array
+          items:
+            type: string
+            maxLength: 2000
+          maxItems: 50
+        expected:
+          type: string
+          maxLength: 5000
+        priority:
+          $ref: '#/components/schemas/SeverityEnum'
+        requirements:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+          description: 'Requirement numbers: 12 for REQ-12'
+        position:
+          type: integer
+          minimum: 1
+          description: 1 is first
+      required:
+      - expected
+      - steps
+      - title
     Counts:
       type: object
       properties:
@@ -2051,6 +2855,73 @@ components:
           maxItems: 20
       required:
       - title
+    DiffCase:
+      type: object
+      properties:
+        case:
+          type: string
+        number:
+          type: integer
+        title:
+          type: string
+      required:
+      - case
+      - number
+      - title
+    DiffChanged:
+      type: object
+      properties:
+        case:
+          type: string
+        number:
+          type: integer
+        title:
+          type: string
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiffField'
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiffStep'
+      required:
+      - case
+      - changes
+      - number
+      - steps
+      - title
+    DiffField:
+      type: object
+      properties:
+        field:
+          $ref: '#/components/schemas/FieldEnum'
+        before:
+          type: string
+        after:
+          type: string
+      required:
+      - after
+      - before
+      - field
+    DiffStep:
+      type: object
+      properties:
+        op:
+          $ref: '#/components/schemas/OpEnum'
+        text:
+          type: string
+        before:
+          type: integer
+          nullable: true
+        after:
+          type: integer
+          nullable: true
+      required:
+      - after
+      - before
+      - op
+      - text
     Download:
       type: object
       properties:
@@ -2082,6 +2953,18 @@ components:
       - mime
       - name
       - state
+    FieldEnum:
+      enum:
+      - title
+      - preconditions
+      - expected
+      - priority
+      type: string
+      description: |-
+        * `title` - title
+        * `preconditions` - preconditions
+        * `expected` - expected
+        * `priority` - priority
     File:
       type: object
       properties:
@@ -2358,6 +3241,29 @@ components:
       - progress
       - started_at
       - state
+    LinkedCase:
+      type: object
+      properties:
+        display_id:
+          type: string
+        number:
+          type: integer
+        title:
+          type: string
+        plan:
+          type: string
+        plan_no:
+          type: integer
+        stale:
+          type: boolean
+          description: Written against an older text of the requirement
+      required:
+      - display_id
+      - number
+      - plan
+      - plan_no
+      - stale
+      - title
     Me:
       type: object
       properties:
@@ -2448,6 +3354,18 @@ components:
       - due
       - project_key
       - version
+    OpEnum:
+      enum:
+      - same
+      - added
+      - removed
+      - moved
+      type: string
+      description: |-
+        * `same` - same
+        * `added` - added
+        * `removed` - removed
+        * `moved` - moved
     OpenWork:
       type: object
       properties:
@@ -2517,6 +3435,44 @@ components:
       - id
       - name
       - slug
+    OriginEnum:
+      enum:
+      - human
+      - ai
+      type: string
+      description: |-
+        * `human` - Human
+        * `ai` - Ai
+    PatchedCaseEdit:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        preconditions:
+          type: string
+          maxLength: 5000
+        steps:
+          type: array
+          items:
+            type: string
+            maxLength: 2000
+          maxItems: 50
+        expected:
+          type: string
+          maxLength: 5000
+        priority:
+          $ref: '#/components/schemas/SeverityEnum'
+        requirements:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+          description: 'Requirement numbers: 12 for REQ-12'
+        position:
+          type: integer
+          minimum: 1
+          description: 1 is first
     PatchedDefectEdit:
       type: object
       properties:
@@ -2554,11 +3510,160 @@ components:
         settings:
           type: object
           additionalProperties: {}
+    PatchedRequirementEdit:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        text:
+          type: string
+          maxLength: 20000
+        priority:
+          $ref: '#/components/schemas/SeverityEnum'
     PatchedRoleChange:
       type: object
       properties:
         role:
           $ref: '#/components/schemas/RoleEnum'
+    PlanActions:
+      type: object
+      properties:
+        edit:
+          type: boolean
+        approve:
+          type: boolean
+      required:
+      - approve
+      - edit
+    PlanCase:
+      type: object
+      properties:
+        case:
+          type: string
+        number:
+          type: integer
+        revision:
+          type: integer
+        title:
+          type: string
+        preconditions:
+          type: string
+        steps:
+          type: array
+          items:
+            type: string
+        expected:
+          type: string
+        priority:
+          $ref: '#/components/schemas/SeverityEnum'
+        requirements:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaseRequirement'
+      required:
+      - case
+      - expected
+      - number
+      - preconditions
+      - priority
+      - requirements
+      - revision
+      - steps
+      - title
+    PlanCreate:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        scope:
+          type: string
+          default: ''
+          maxLength: 5000
+      required:
+      - title
+    PlanDetail:
+      type: object
+      properties:
+        display_id:
+          type: string
+        number:
+          type: integer
+        title:
+          type: string
+        scope:
+          type: string
+        version:
+          type: string
+          nullable: true
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanVersionRow'
+        draft:
+          allOf:
+          - $ref: '#/components/schemas/PlanDraft'
+          nullable: true
+        uncovered:
+          type: array
+          items:
+            $ref: '#/components/schemas/Uncovered'
+        actions:
+          $ref: '#/components/schemas/PlanActions'
+      required:
+      - actions
+      - display_id
+      - draft
+      - number
+      - scope
+      - title
+      - uncovered
+      - version
+      - versions
+    PlanDiff:
+      type: object
+      properties:
+        added:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiffCase'
+        removed:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiffCase'
+        changed:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiffChanged'
+        unchanged_count:
+          type: integer
+        unchanged:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiffCase'
+      required:
+      - added
+      - changed
+      - removed
+      - unchanged
+      - unchanged_count
+    PlanDraft:
+      type: object
+      properties:
+        cases:
+          type: integer
+        submitted_by:
+          type: string
+          nullable: true
+        submitted_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - cases
+      - submitted_at
+      - submitted_by
     PlanRow:
       type: object
       properties:
@@ -2570,14 +3675,59 @@ components:
           type: string
         version:
           type: string
+          nullable: true
+          description: The current published version; none until first approved
         cases:
           type: integer
+        has_draft:
+          type: boolean
+        draft_submitted:
+          type: boolean
       required:
       - cases
       - display_id
+      - draft_submitted
+      - has_draft
       - number
       - title
       - version
+    PlanVersionDetail:
+      type: object
+      properties:
+        number:
+          type: string
+        state:
+          $ref: '#/components/schemas/StateDd9Enum'
+        cases:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanCase'
+      required:
+      - cases
+      - number
+      - state
+    PlanVersionRow:
+      type: object
+      properties:
+        number:
+          type: string
+        state:
+          $ref: '#/components/schemas/StateDd9Enum'
+        cases:
+          type: integer
+        approved_by:
+          type: string
+          nullable: true
+        approved_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - approved_at
+      - approved_by
+      - cases
+      - number
+      - state
     Project:
       type: object
       properties:
@@ -2870,6 +4020,98 @@ components:
       description: |-
         * `draft` - draft
         * `signed` - signed
+    RequirementActions:
+      type: object
+      properties:
+        edit:
+          type: boolean
+      required:
+      - edit
+    RequirementDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_id:
+          type: string
+        number:
+          type: integer
+        title:
+          type: string
+        priority:
+          $ref: '#/components/schemas/SeverityEnum'
+        revision:
+          type: integer
+        review_state:
+          $ref: '#/components/schemas/ReviewStateEnum'
+        origin:
+          $ref: '#/components/schemas/OriginEnum'
+        covered:
+          type: boolean
+        cases:
+          type: integer
+        stale_cases:
+          type: integer
+        updated_at:
+          type: string
+          format: date-time
+        text:
+          type: string
+        created_by:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        linked_cases:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinkedCase'
+        revisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/RequirementText'
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/RequirementHistory'
+        actions:
+          $ref: '#/components/schemas/RequirementActions'
+      required:
+      - actions
+      - cases
+      - covered
+      - created_at
+      - created_by
+      - display_id
+      - history
+      - id
+      - linked_cases
+      - number
+      - origin
+      - priority
+      - review_state
+      - revision
+      - revisions
+      - stale_cases
+      - text
+      - title
+      - updated_at
+    RequirementHistory:
+      type: object
+      properties:
+        at:
+          type: string
+          format: date-time
+        actor:
+          type: string
+        text:
+          type: string
+      required:
+      - actor
+      - at
+      - text
     RequirementRef:
       type: object
       properties:
@@ -2879,6 +4121,80 @@ components:
           type: string
       required:
       - display_id
+      - title
+    RequirementRow:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_id:
+          type: string
+        number:
+          type: integer
+        title:
+          type: string
+        priority:
+          $ref: '#/components/schemas/SeverityEnum'
+        revision:
+          type: integer
+        review_state:
+          $ref: '#/components/schemas/ReviewStateEnum'
+        origin:
+          $ref: '#/components/schemas/OriginEnum'
+        covered:
+          type: boolean
+        cases:
+          type: integer
+        stale_cases:
+          type: integer
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - cases
+      - covered
+      - display_id
+      - id
+      - number
+      - origin
+      - priority
+      - review_state
+      - revision
+      - stale_cases
+      - title
+      - updated_at
+    RequirementText:
+      type: object
+      properties:
+        revision:
+          type: integer
+        text:
+          type: string
+        at:
+          type: string
+          format: date-time
+        by:
+          type: string
+          nullable: true
+      required:
+      - at
+      - by
+      - revision
+      - text
+    RequirementWrite:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        text:
+          type: string
+          maxLength: 20000
+        priority:
+          $ref: '#/components/schemas/SeverityEnum'
+      required:
+      - text
       - title
     ResultOutcomeEnum:
       enum:
@@ -2982,6 +4298,16 @@ components:
       - evidence
       - id
       - outcome
+    ReviewStateEnum:
+      enum:
+      - draft
+      - accepted
+      - rejected
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `accepted` - Accepted
+        * `rejected` - Rejected
     RoleEnum:
       enum:
       - owner
@@ -3370,6 +4696,16 @@ components:
         * `active` - active
         * `expired` - expired
         * `revoked` - revoked
+    StateDd9Enum:
+      enum:
+      - draft
+      - published
+      - superseded
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `published` - Published
+        * `superseded` - Superseded
     StatusChange:
       type: object
       properties:
@@ -3403,6 +4739,19 @@ components:
         * `closed_failed_retest` - closed_failed_retest
         * `uncovered_critical` - uncovered_critical
         * `unfiled_failure` - unfiled_failure
+    Uncovered:
+      type: object
+      properties:
+        display_id:
+          type: string
+        title:
+          type: string
+        priority:
+          $ref: '#/components/schemas/SeverityEnum'
+      required:
+      - display_id
+      - priority
+      - title
     UploadRequest:
       type: object
       properties:

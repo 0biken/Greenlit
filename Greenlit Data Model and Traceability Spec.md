@@ -39,7 +39,7 @@ Each case result also points at the exact case revision it tested, which is how 
 
 ## Entities and fields
 
-There are 32 tables: 30 listed here in seven groups, the requirement-to-case link in section 5 and the ID counter in section 4. Test cases are split into a stable identity (`test_case`) and immutable content snapshots (`case_revision`), which lets versioning and run history work without copying whole plans.
+There are 33 tables: 31 listed here in seven groups, the requirement-to-case link in section 5 and the ID counter in section 4. Test cases are split into a stable identity (`test_case`) and immutable content snapshots (`case_revision`), which lets versioning and run history work without copying whole plans.
 
 **Account**
 
@@ -58,13 +58,14 @@ There are 32 tables: 30 listed here in seven groups, the requirement-to-case lin
 | --- | --- | --- |
 | source\_document | project\_id, kind (enum: prd, screenshot\_set, qa\_report), file\_ref, page\_count | The uploaded file, kept as evidence of origin |
 | requirement | project\_id, display\_no, title, text, priority, revision (int), source\_document\_id, source\_locator (json), review\_state, origin | `revision` goes up when `text` changes; `source_locator` holds page and passage, or image region |
+| requirement\_revision *(proposed, closes G-07)* | requirement\_id, revision (int), text, source\_locator (json) | The text a requirement had at one revision. A row is written when a revision becomes current and never changed, so the passage a case was written against stays readable. Unique per requirement and revision |
 
 **Plans**
 
 | Table | Key fields | Rules |
 | --- | --- | --- |
 | test\_plan | project\_id, display\_no, title, scope, current\_version\_id | One plan per release or feature area |
-| plan\_version | plan\_id, number (e.g. 1.0, 1.1), state (enum: draft, published, superseded), approved\_by, approved\_at | Only one draft per plan at a time; published rows never change |
+| plan\_version | plan\_id, number (e.g. 1.0, 1.1), state (enum: draft, published, superseded), approved\_by, approved\_at, submitted\_by, submitted\_at | Only one draft per plan at a time; published rows never change. The submitted pair marks a draft handed to a lead, and any later edit clears it |
 | test\_case | project\_id, display\_no, retired\_at | Identity only; content lives in revisions |
 | case\_revision | test\_case\_id, rev\_no, title, preconditions, steps (json list), expected, priority, review\_state, origin | Immutable once its plan version is published |
 | plan\_version\_case | plan\_version\_id, case\_revision\_id, position | Which revisions make up a version |

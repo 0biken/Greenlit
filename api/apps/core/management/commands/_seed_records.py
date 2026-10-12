@@ -354,7 +354,57 @@ def seed_kola(project: Project, lead, tester, dev) -> str | None:
     )
     first = CaseResult.objects.filter(run=in_progress).order_by("created_at").first()
     runs.record_result(first, tester, "passed")
+    _seed_plan_history(project, lead, tester)
     return token
+
+
+def _seed_plan_history(project: Project, lead, tester) -> None:
+    """A plan with two published versions and an open draft, so the version history, the diff
+    and roll back have something to show (M3-06, M3-07)."""
+    plan = plans.create_plan(project, lead, title="Sign-in", scope="Signing in and out.")
+    first = plans.add_case(
+        plans.draft_of(plan),
+        lead,
+        title="Signs in with a password",
+        steps=["Open the app", "Enter [valid email]", "Enter [valid password]", "Press Sign in"],
+        expected="The accounts screen opens.",
+    )
+    plans.add_case(
+        plans.draft_of(plan),
+        lead,
+        title="Wrong password is refused",
+        steps=["Open the app", "Enter [valid email]", "Enter [wrong password]", "Press Sign in"],
+        expected="An error says the details are wrong. Nothing says which one.",
+    )
+    plans.approve(plans.draft_of(plan), lead)
+
+    draft = plans.open_draft(plan, tester)
+    plans.edit_case(
+        draft,
+        first.test_case,
+        tester,
+        steps=["Open the app", "Press Sign in", "Enter [valid email]", "Enter [valid password]"],
+        expected="The accounts screen opens within 2 seconds.",
+    )
+    plans.add_case(
+        draft,
+        tester,
+        title="Signs out from the menu",
+        steps=["Sign in", "Open the menu", "Press Sign out"],
+        expected="The sign-in screen opens.",
+    )
+    plans.approve(draft, lead)
+
+    draft = plans.open_draft(plan, tester)
+    plans.add_case(
+        draft,
+        tester,
+        title="Three wrong passwords lock the account",
+        steps=["Enter [wrong password] three times"],
+        expected="The account is locked for 15 minutes.",
+        priority=Priority.HIGH,
+    )
+    plans.submit(draft, tester)
 
 
 def seed_small(project: Project, lead) -> bool:

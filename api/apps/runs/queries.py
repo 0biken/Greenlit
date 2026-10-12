@@ -4,12 +4,11 @@ from collections import defaultdict
 
 from django.db.models import Count
 
-from apps.core.choices import ReviewState
 from apps.core.models import CounterKind, Project, display_name
 from apps.core.numbering import format_display_id
 from apps.defects import status as defect_status
 from apps.defects.models import Defect
-from apps.plans.models import PlanVersionCase, TestPlan
+from apps.plans.models import PlanVersionCase
 from apps.runs.models import (
     CaseResult,
     Evidence,
@@ -59,31 +58,6 @@ def releases(project: Project) -> list[dict]:
     return [
         {"version": r.name, "due": r.target_date, "state": r.state, "runs": r.run_count}
         for r in rows
-    ]
-
-
-def plans(project: Project) -> list[dict]:
-    """Plans that have a published version, which is what a run can be started from."""
-    rows = TestPlan.objects.filter(project=project, current_version__isnull=False).select_related(
-        "current_version"
-    )
-    counts = dict(
-        PlanVersionCase.objects.filter(
-            plan_version_id__in=[p.current_version_id for p in rows],
-            case_revision__review_state=ReviewState.ACCEPTED,
-        )
-        .values_list("plan_version_id")
-        .annotate(n=Count("id"))
-    )
-    return [
-        {
-            "display_id": format_display_id(CounterKind.TEST_PLAN, p.display_no),
-            "number": p.display_no,
-            "title": p.title,
-            "version": p.current_version.number,
-            "cases": counts.get(p.current_version_id, 0),
-        }
-        for p in rows.order_by("display_no")
     ]
 
 

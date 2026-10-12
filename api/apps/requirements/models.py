@@ -27,3 +27,21 @@ class Requirement(TenantModel):
         constraints = [
             models.UniqueConstraint(fields=["project", "display_no"], name="requirement_no_unique")
         ]
+
+
+class RequirementRevision(TenantModel):
+    """The text a requirement had at one `revision` (spec gap G-07). A row is written when a
+    revision becomes current and never changed afterwards, so the passage a case was written
+    against can still be read after the requirement moves on (AI §5)."""
+
+    requirement = models.ForeignKey(Requirement, on_delete=models.PROTECT, related_name="revisions")
+    revision = models.PositiveIntegerField()
+    text = models.TextField()
+    source_locator = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["requirement", "revision"], name="requirement_revision_unique"
+            )
+        ]

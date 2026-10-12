@@ -43,6 +43,11 @@ class PlanVersion(TenantModel):
         "core.User", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
     )
     approved_at = models.DateTimeField(null=True, blank=True)
+    # A draft handed to a lead for approval (UX Flow 1 step 6). Cleared by any later edit.
+    submitted_by = models.ForeignKey(
+        "core.User", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
+    submitted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         constraints = [
