@@ -14,7 +14,7 @@ from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 
 from apps.core.models import Project
-from apps.core.policy import Action, requires, visible_projects
+from apps.core.policy import Action, project_or_404, requires, visible_projects
 from apps.core.throttles import IpThrottle, OrgThrottle, UploadThrottle, UserThrottle
 from apps.core.views_orgs import _run
 from apps.files import services
@@ -62,15 +62,7 @@ class DownloadSerializer(serializers.Serializer):
     expires_at = serializers.DateTimeField()
 
 
-def _project(request, key: str) -> Project:
-    project = (
-        visible_projects(Project.objects.all(), request._request.membership)
-        .filter(key=key.upper())
-        .first()
-    )
-    if project is None:
-        raise NotFound()
-    return project
+_project = project_or_404
 
 
 def _file(request, file_id: UUID) -> StoredFile:

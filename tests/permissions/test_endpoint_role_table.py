@@ -28,6 +28,9 @@ from apps.core.models import (
     User,
 )
 from apps.core.policy import can
+from apps.defects.status import create_defect, set_tracker_status
+from apps.requirements.services import create_requirement
+from apps.runs.services import create_release
 from apps.core.tenancy import org_scope
 from tests.support import HANDLED, api_endpoints, declared, stored_file, url_for
 
@@ -65,6 +68,17 @@ SAMPLES = {
     ("api/projects/<str:key>/", "patch"): lambda ctx: {"client_name": "Client X"},
     ("api/projects/<str:key>/members/", "post"): lambda ctx: {"user_id": ctx["fresh_member"]()},
     ("api/projects/<str:key>/members/<uuid:user_id>/", "delete"): lambda ctx: {},
+    ("api/inbox/<str:item_id>/snooze/", "post"): lambda ctx: {
+        "reason": "Waiting for staging",
+        "until": (timezone.now() + timedelta(days=2)).isoformat(),
+    },
+    ("api/inbox/<str:item_id>/unsnooze/", "post"): lambda ctx: {},
+    ("api/projects/<str:key>/releases/<str:version>/sign-off/", "post"): lambda ctx: {"reason": ""},
+    ("api/projects/<str:key>/defects/<str:defect_id>/fixed/", "post"): lambda ctx: {},
+    ("api/projects/<str:key>/defects/<str:defect_id>/retests/", "post"): lambda ctx: {
+        "outcome": "passed",
+        "evidence_file_ids": [ctx["file_id"]],
+    },
 }
 
 
@@ -119,6 +133,24 @@ def _org_with_a_member_of_each_role():
         job = Job.objects.create(org_id=org.id, kind="sample", state=JobState.DEAD)
         # An available file, so downloading it and completing it (a no-op) are valid requests.
         upload = stored_file(org, project, "evidence.png")
+        requirement = create_requirement(project, None, title="Pay by card", text="Card payments.")
+        fixer = User.objects.create_user("fixer@table.example", "x" * 14)
+        Membership.objects.create(
+            org_id=org.id, user=fixer, role=Role.DEVELOPER, status=MembershipStatus.ACTIVE
+        )
+
+    def fresh_release() -> str:
+        """An empty open release, so signing it off is a valid request (it is Ready)."""
+        with org_scope(org.id):
+            return create_release(project, None, name=f"9.{next(_counter)}").name
+
+    def fresh_fixed_defect() -> str:
+        """A defect someone else marked fixed: setting it fixed again is a no-op, and any
+        tester may retest it (the fixer-cannot-verify rule does not apply to them)."""
+        with org_scope(org.id):
+            defect = create_defect(project, None, title="Sample defect")
+            set_tracker_status(defect, fixer, "fixed")
+        return str(defect.display_no)
 
     def fresh_member() -> str:
         """A viewer on the sample project, for calls that change or remove someone."""
@@ -144,11 +176,15 @@ def _org_with_a_member_of_each_role():
 
     ctx = {
         "fresh_member": fresh_member,
+        "file_id": str(upload.id),
         "params": {
             "job_id": str(job.id),
             "file_id": str(upload.id),
             "user_id": fresh_member,
             "invite_id": fresh_invitation,
+            "version": fresh_release,
+            "defect_id": fresh_fixed_defect,
+            "item_id": f"requirement.{requirement.pk}",
         },
     }
     return org, users, ctx

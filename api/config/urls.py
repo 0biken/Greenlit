@@ -11,7 +11,10 @@ from apps.core.views import (
     health,
     me,
 )
+from apps.defects import views as defect_views
 from apps.files import views as file_views
+from apps.inbox import views as inbox_views
+from apps.reports import views as report_views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -50,6 +53,30 @@ urlpatterns = [
     path("files/local/upload/<str:token>/", file_views.local_upload, name="file-local-upload"),
     path(
         "files/local/download/<str:token>/", file_views.local_download, name="file-local-download"
+    ),
+    path("api/inbox/", inbox_views.inbox, name="inbox"),
+    path("api/inbox/<str:item_id>/snooze/", inbox_views.snooze, name="inbox-snooze"),
+    path("api/inbox/<str:item_id>/unsnooze/", inbox_views.unsnooze, name="inbox-unsnooze"),
+    path("api/projects/<str:key>/summary/", report_views.summary, name="project-summary"),
+    path(
+        "api/projects/<str:key>/releases/<str:version>/",
+        report_views.release_detail,
+        name="release-detail",
+    ),
+    path(
+        "api/projects/<str:key>/releases/<str:version>/sign-off/",
+        report_views.sign_off,
+        name="release-sign-off",
+    ),
+    path(
+        "api/projects/<str:key>/defects/<str:defect_id>/fixed/",
+        defect_views.mark_fixed,
+        name="defect-fixed",
+    ),
+    path(
+        "api/projects/<str:key>/defects/<str:defect_id>/retests/",
+        defect_views.retests,
+        name="defect-retests",
     ),
     path("api/schema/", PublicSchemaView.as_view(), name="schema"),
 ]

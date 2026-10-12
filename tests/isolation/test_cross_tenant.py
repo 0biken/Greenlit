@@ -26,7 +26,14 @@ from apps.core.models import (
 )
 from apps.core.numbering import next_number
 from apps.core.tenancy import org_scope, set_scope
-from tests.support import api_endpoints, declared, methods_of, stored_file, url_for
+from tests.support import (
+    api_endpoints,
+    declared,
+    methods_of,
+    seed_spine,
+    stored_file,
+    url_for,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -63,11 +70,13 @@ def world():
             assert ProjectMember.objects.filter(user=engineer).exists()
             job = Job.objects.create(org_id=org.id, kind="sample", state=JobState.DEAD)
             upload = stored_file(org, shared, f"{display} evidence.png")
+            spine = seed_spine(org, shared, owner, engineer, upload, label=display)
         setattr(w, tag, org)
         setattr(w, f"{tag}_file", upload)
         setattr(w, f"{tag}_job", job)
         setattr(w, f"{tag}_owner", owner)
         setattr(w, f"{tag}_engineer", engineer)
+        setattr(w, f"{tag}_spine", spine)
     return w
 
 
@@ -191,6 +200,9 @@ def test_no_alpha_response_contains_any_of_bravos_data(world):
                         "key": "SHARED",
                         "job_id": str(world.alpha_job.id),
                         "file_id": str(world.alpha_file.id),
+                        "version": "1.0",
+                        "defect_id": str(world.alpha_spine["defect"].pk),
+                        "item_id": f"requirement.{world.alpha_spine['requirement'].pk}",
                     },
                 ),
                 headers={"X-Org": "alpha-iso"},
@@ -216,6 +228,9 @@ def test_bravos_identifiers_are_not_found_under_alpha(world):
                         "key": "SECRTB",
                         "job_id": str(world.bravo_job.id),
                         "file_id": str(world.bravo_file.id),
+                        "version": "1.0",
+                        "defect_id": str(world.bravo_spine["defect"].pk),
+                        "item_id": f"requirement.{world.bravo_spine['requirement'].pk}",
                     },
                 ),
                 headers={"X-Org": "alpha-iso"},

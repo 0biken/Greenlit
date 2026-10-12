@@ -16,6 +16,9 @@ PARAMS = {
     "file_id": "00000000-0000-0000-0000-000000000000",
     "user_id": "00000000-0000-0000-0000-000000000000",
     "invite_id": "00000000-0000-0000-0000-000000000000",
+    "version": "0.0.0",
+    "defect_id": "1",
+    "item_id": "requirement.00000000-0000-0000-0000-000000000000",
 }
 
 
@@ -68,7 +71,10 @@ import time  # noqa: E402
 from base64 import b32decode  # noqa: E402
 from urllib.parse import unquote  # noqa: E402
 
+from datetime import timedelta  # noqa: E402
+
 from django.core import mail  # noqa: E402
+from django.utils import timezone  # noqa: E402
 from django.test import Client  # noqa: E402
 
 AUTH_BASE = "/_allauth/browser/v1"
@@ -172,3 +178,72 @@ def stored_file(org, project, name: str, data: bytes = PNG_BYTES):
         sha256=_hashlib.sha256(data).hexdigest(),
         state=FileState.AVAILABLE,
     )
+
+
+def seed_spine(org, project, lead, tester, upload, label: str = "Sample"):
+    """One of everything in the requirement-to-sign-off chain, made through the services so
+    every rule applies: a requirement covered by a published case, a release, a run with a
+    failed result, a defect filed from it, fixed and retested with evidence, a snooze and a
+    signed-off release with its frozen report. Call in the org's scope. Returns the records."""
+    from apps.core.choices import Priority
+    from apps.core.models import Membership
+    from apps.defects import status
+    from apps.inbox.models import Snooze
+    from apps.plans import services as plans
+    from apps.reports import services as reports
+    from apps.requirements.services import create_requirement
+    from apps.runs import services as runs
+    from apps.runs.models import CaseResult
+
+    requirement = create_requirement(
+        project, lead, title=f"{label} checkout", text=f"{label} users can pay by card."
+    )
+    plan = plans.create_plan(project, lead, title=f"{label} checkout plan")
+    plans.add_case(
+        plans.draft_of(plan),
+        lead,
+        title=f"{label} pays by card",
+        steps=["Add an item", "Pay by card"],
+        expected="The order is confirmed.",
+        requirements=[requirement],
+    )
+    version = plans.approve(plans.draft_of(plan), lead)
+    release = runs.create_release(project, lead, name="1.0")
+    run = runs.start_run(release, version, tester, build="100", environment="staging")
+    result = CaseResult.objects.get(run=run)
+    runs.record_result(result, tester, "failed", note=f"{label} payment times out")
+    defect = status.create_defect(
+        project,
+        tester,
+        title=f"{label} payment times out",
+        severity=Priority.HIGH,
+        owner=tester,
+        release=release,
+        found_in_result=result,
+        evidence_file_ids=[upload.pk],
+    )
+    defect = status.set_tracker_status(defect, lead, "fixed")
+    retest = status.record_retest(defect, tester, outcome="failed", evidence_file_ids=[upload.pk])
+    defect.refresh_from_db()
+    snooze = Snooze.objects.create(
+        org_id=org.id,
+        user=tester,
+        target_type="requirement",
+        target_id=requirement.pk,
+        until=timezone.now() + timedelta(days=1),
+        reason=f"{label} waiting",
+    )
+    sign_off = reports.sign_off(
+        release, Membership.objects.get(user=lead), reason=f"{label} accepted the risk"
+    )
+    return {
+        "requirement": requirement,
+        "plan": plan,
+        "release": release,
+        "run": run,
+        "result": result,
+        "defect": defect,
+        "retest": retest,
+        "snooze": snooze,
+        "sign_off": sign_off,
+    }

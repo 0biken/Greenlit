@@ -18,7 +18,7 @@ from rest_framework.exceptions import NotFound
 from rest_framework.permissions import BasePermission, IsAuthenticated
 
 from apps.core.mfa import MfaRequired, needs_mfa_enrolment
-from apps.core.models import ProjectMember, Role
+from apps.core.models import Project, ProjectMember, Role
 
 
 class Action(StrEnum):
@@ -77,6 +77,18 @@ def visible_projects(queryset, membership):
         return queryset
     member_of = ProjectMember.objects.filter(user_id=membership.user_id).values("project_id")
     return queryset.filter(id__in=member_of)
+
+
+def project_or_404(request, key: str) -> Project:
+    """The project with this key, if the caller may see it; otherwise 404 (never 403)."""
+    project = (
+        visible_projects(Project.objects.all(), request._request.membership)
+        .filter(key=key.upper())
+        .first()
+    )
+    if project is None:
+        raise NotFound()
+    return project
 
 
 class _Requires(BasePermission):

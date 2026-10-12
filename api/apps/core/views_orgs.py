@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 from apps.core import services
 from apps.core.models import Membership, MembershipStatus, Project, ProjectMember, Role
-from apps.core.policy import Action, AuthenticatedOnly, requires, visible_projects
+from apps.core.policy import Action, AuthenticatedOnly, project_or_404, requires, visible_projects
 from apps.core.project_settings import project_settings
 
 
@@ -215,15 +215,7 @@ class ProjectMemberAddSerializer(serializers.Serializer):
     user_id = serializers.UUIDField()
 
 
-def _project(request, key: str) -> Project:
-    project = (
-        visible_projects(Project.objects.all(), request._request.membership)
-        .filter(key=key.upper())
-        .first()
-    )
-    if project is None:
-        raise NotFound()
-    return project
+_project = project_or_404
 
 
 @extend_schema(
