@@ -25,6 +25,7 @@ class InboxItemSerializer(serializers.Serializer):
         choices=("retest", "run", "add_case", "open", "file_defect", "attach_evidence")
     )
     owner_name = serializers.CharField(allow_null=True)
+    escalated = serializers.BooleanField(help_text="Waiting past the first escalation time")
     snoozed_until = serializers.DateTimeField(allow_null=True)
     snooze_reason = serializers.CharField(allow_null=True)
 

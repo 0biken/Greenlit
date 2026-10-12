@@ -35,9 +35,10 @@ export const PROJECTS = [
 ]
 
 let n = 0
-const item = (p: Omit<InboxItem, 'id' | 'since' | 'snoozed_until' | 'snooze_reason'>): InboxItem => ({
+const item = (p: Omit<InboxItem, 'id' | 'since' | 'snoozed_until' | 'snooze_reason' | 'escalated'>): InboxItem => ({
   id: `inbox-${++n}`,
   since: daysAgo(p.age_days),
+  escalated: p.group === 'needs_retest' && p.age_days >= 2,
   snoozed_until: null,
   snooze_reason: null,
   ...p,

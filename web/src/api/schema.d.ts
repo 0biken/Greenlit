@@ -1078,6 +1078,8 @@ export interface components {
             since: string;
             next_action: components["schemas"]["NextActionEnum"];
             owner_name: string | null;
+            /** @description Waiting past the first escalation time */
+            escalated: boolean;
             /** Format: date-time */
             snoozed_until: string | null;
             snooze_reason: string | null;

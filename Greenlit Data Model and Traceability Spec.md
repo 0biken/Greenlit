@@ -39,7 +39,7 @@ Each case result also points at the exact case revision it tested, which is how 
 
 ## Entities and fields
 
-There are 30 tables: 28 listed here in seven groups, the requirement-to-case link in section 5 and the ID counter in section 4. Test cases are split into a stable identity (`test_case`) and immutable content snapshots (`case_revision`), which lets versioning and run history work without copying whole plans.
+There are 32 tables: 30 listed here in seven groups, the requirement-to-case link in section 5 and the ID counter in section 4. Test cases are split into a stable identity (`test_case`) and immutable content snapshots (`case_revision`), which lets versioning and run history work without copying whole plans.
 
 **Account**
 
@@ -98,6 +98,8 @@ There are 30 tables: 28 listed here in seven groups, the requirement-to-case lin
 | Table | Key fields | Rules |
 | --- | --- | --- |
 | snooze | user\_id, target\_type, target\_id, until, reason | Hides one Inbox item for one user until a date |
+| notification *(proposed, closes G-01)* | user\_id, level (enum: 48h, 96h, critical, digest), target\_type, target\_id, cycle, sent\_at, read\_at | One row per thing one person was told. Unique per user, level, target and cycle, so a reminder is sent once however often the job runs. `cycle` is when the current wait began (a defect fixed again later is reminded again), or the person's local date for a digest |
+| share\_link *(proposed, closes G-02)* | report\_id, token\_hash, expires\_at, revoked\_at | A read-only link to a signed report. Only a hash of the token is stored. The holder of a token can read that one row before any organisation is known (section 8), the same way as an invitation; expired and revoked links answer "not found" |
 | audit\_event | actor\_id, action, target\_type, target\_id, before (json), after (json), at | Append-only (section 10) |
 | external\_ref | target\_type, target\_id, provider (enum: jira, github, figma), external\_key, external\_url, last\_synced\_at | Unused in v1; ready for phase 2 sync |
 | stored\_file | project\_id, kind (enum: prd, screenshot, qa\_report, evidence), original\_name, storage\_key, declared\_mime, detected\_mime, size\_bytes, sha256, state (enum: pending, scanning, available, rejected, infected), uploaded\_by | One row per uploaded file; the key is `{org_id}/{project_id}/{uuid}`; `source_document.file_ref` and `evidence.file_ref` point here; a file is not served until `available` |

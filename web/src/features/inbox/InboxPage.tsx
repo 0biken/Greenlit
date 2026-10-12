@@ -268,6 +268,7 @@ function InboxRow({
         <span className="inbox-meta">
           <span>{item.project_name}</span>
           {item.owner_name ? <span>{item.owner_name}</span> : null}
+          {item.escalated ? <span className="inbox-escalated">Overdue for a retest</span> : null}
           {snoozedView && item.snooze_reason ? <span>Snoozed: {item.snooze_reason}</span> : null}
         </span>
         <span className="inbox-status">

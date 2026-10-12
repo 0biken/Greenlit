@@ -19,6 +19,7 @@ from django.utils import timezone
 
 from apps.core import audit
 from apps.core.choices import Priority
+from apps.core.jobs import enqueue
 from apps.core.models import CounterKind, Project
 from apps.core.numbering import next_number
 from apps.core.project_settings import project_settings
@@ -145,6 +146,10 @@ def set_tracker_status(defect: Defect, actor, status: str) -> Defect:
         _save(
             defect, actor, before, action="defect.reopened" if reopened else "defect.status_changed"
         )
+        if status == TrackerStatus.CLOSED and defect.qa_status == QaStatus.RETEST_FAILED:
+            # FR-DEF-05: closed although its last retest failed. That is critical, so the
+            # owner and the leads are told now rather than at the next reminders cycle.
+            enqueue("reminders", org_id=defect.org_id)
     return defect
 
 

@@ -193,7 +193,7 @@ def seed_spine(org, project, lead, tester, upload, label: str = "Sample"):
     from apps.core.choices import Priority
     from apps.core.models import Membership
     from apps.defects import status
-    from apps.inbox.models import Snooze
+    from apps.inbox.models import Notification, Snooze
     from apps.plans import services as plans
     from apps.reports import services as reports
     from apps.reports import sharing
@@ -243,6 +243,15 @@ def seed_spine(org, project, lead, tester, upload, label: str = "Sample"):
         release, Membership.objects.get(user=lead), reason=f"{label} accepted the risk"
     )
     share_link, share_token = sharing.create_link(release, lead)
+    Notification.objects.create(
+        org_id=org.id,
+        user=tester,
+        level="48h",
+        target_type="defect",
+        target_id=defect.pk,
+        cycle=f"{label} cycle",
+        sent_at=timezone.now(),
+    )
     return {
         "share_link": share_link,
         "share_token": share_token,

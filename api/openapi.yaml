@@ -2262,6 +2262,9 @@ components:
         owner_name:
           type: string
           nullable: true
+        escalated:
+          type: boolean
+          description: Waiting past the first escalation time
         snoozed_until:
           type: string
           format: date-time
@@ -2273,6 +2276,7 @@ components:
       - age_days
       - critical
       - display_id
+      - escalated
       - group
       - id
       - next_action

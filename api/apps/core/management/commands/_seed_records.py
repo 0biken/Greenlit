@@ -18,12 +18,14 @@ from datetime import timedelta
 from django.utils import timezone
 
 from apps.core.choices import Priority
-from apps.core.models import Project
+from apps.core.models import Membership, Project
 from apps.defects import status
 from apps.defects.models import Defect
 from apps.files.models import FileState, StoredFile
 from apps.files.storage import get_storage
 from apps.plans import services as plans
+from apps.reports import services as reports
+from apps.reports import sharing
 from apps.requirements.services import create_requirement
 from apps.runs import services as runs
 from apps.runs.models import CaseResult, Release
@@ -276,9 +278,12 @@ def seed_hube(project: Project, lead, tester, dev) -> bool:
     return True
 
 
-def seed_kola(project: Project, lead, tester, dev) -> bool:
+def seed_kola(project: Project, lead, tester, dev) -> str | None:
+    """Release 5.0.0, signed off while not ready (so there is a frozen report, a PDF and a
+    share link to look at), and 5.1.0 with a run in progress. Returns the share link's token,
+    which can only be shown now, or None if the records were already there."""
     if Release.objects.filter(project=project, name="5.0.0").exists():
-        return False
+        return None
     transfers = create_requirement(
         project,
         lead,
@@ -336,7 +341,20 @@ def seed_kola(project: Project, lead, tester, dev) -> bool:
         found_in_result=receipt,
     )
     _fixed(defect, dev, 1)
-    return True
+    reports.sign_off(
+        release,
+        Membership.objects.select_related("user").get(user=lead),
+        "Kola accepted the open receipt defect in writing.",
+    )
+    _, token = sharing.create_link(release, lead)
+
+    upcoming = runs.create_release(project, lead, name="5.1.0")
+    in_progress = runs.start_run(
+        upcoming, version, tester, build="5.1.0-beta1", environment="staging"
+    )
+    first = CaseResult.objects.filter(run=in_progress).order_by("created_at").first()
+    runs.record_result(first, tester, "passed")
+    return token
 
 
 def seed_small(project: Project, lead) -> bool:

@@ -75,6 +75,15 @@ def _active_snoozes(membership: Membership, now: datetime) -> dict[str, Snooze]:
     return {f"{s.target_type}.{s.target_id}": s for s in rows}
 
 
+def _escalated(item: Item, now: datetime) -> bool:
+    """A fix that has waited past the first escalation time (FR-INB-02). Within its group the
+    oldest come first, so these are at the top of the Inbox, right after anything critical."""
+    if item.group != "needs_retest":
+        return False
+    first = project_settings(item.project)["retest_escalation_hours"][0]
+    return now - item.since >= timedelta(hours=first)
+
+
 def _serialise(item: Item, now: datetime, snooze: Snooze | None) -> dict:
     return {
         "id": item.key,
@@ -89,6 +98,7 @@ def _serialise(item: Item, now: datetime, snooze: Snooze | None) -> dict:
         "since": item.since,
         "next_action": item.next_action,
         "owner_name": item.owner_name,
+        "escalated": _escalated(item, now),
         "snoozed_until": snooze.until if snooze else None,
         "snooze_reason": snooze.reason if snooze else None,
     }

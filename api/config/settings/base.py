@@ -201,6 +201,20 @@ CELERY_BROKER_URL = env("REDIS_URL", default="redis://localhost:6379/0")
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_TIMEZONE = "UTC"
+# Schedules (ARCH §6). Each entry queues one job per organisation; the job then runs inside
+# that organisation's scope. Run `celery -A config beat` beside the worker.
+CELERY_BEAT_SCHEDULE = {
+    "reminders": {
+        "task": "greenlit.for_each_org",
+        "schedule": 15 * 60,  # every 15 minutes
+        "args": ["reminders"],
+    },
+    "digest": {
+        "task": "greenlit.for_each_org",
+        "schedule": 60 * 60,  # hourly; each run sends to whoever's local time has reached 07:00
+        "args": ["digest"],
+    },
+}
 
 # Feature flags (apps/core/flags.py). Empty by default: a module is off until a deployment lists it.
 FEATURE_FLAGS = env.list("FEATURE_FLAGS", default=[])

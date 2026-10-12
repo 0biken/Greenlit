@@ -7,6 +7,7 @@ Karma Groups is the default organisation; Globex is the second tenant the isolat
 """
 
 from allauth.account.models import EmailAddress
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import connection, transaction
@@ -99,12 +100,16 @@ class Command(BaseCommand):
                                 org_id=karma_id, project=projects[key], user=user
                             )
                     lead, tester, dev = people["lead"], people["qa"], people["dev"]
-                    added = [
-                        records.seed_hube(projects["HUBE"], lead, tester, dev),
-                        records.seed_kola(projects["KOLA"], lead, tester, dev),
-                    ]  # MARA stays empty, to show a project's first visit
-                    if any(added):
+                    # MARA stays empty, to show a project's first visit.
+                    hube = records.seed_hube(projects["HUBE"], lead, tester, dev)
+                    share_token = records.seed_kola(projects["KOLA"], lead, tester, dev)
+                    if hube or share_token:
                         self.stdout.write("Added sample records to Karma Groups.")
+                    if share_token:
+                        self.stdout.write(
+                            "A share link to the signed KOLA 5.0.0 report (shown only now): "
+                            f"{settings.FRONTEND_URL}/shared/{share_token}"
+                        )
 
             globex_owner = _ensure_user("scorpio@globex.example", "Hank Scorpio")
             globex_id = _org_id(globex_owner, "Globex Corporation", "globex")

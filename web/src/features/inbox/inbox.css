@@ -111,6 +111,10 @@
   font-size: 13px;
   color: var(--ink-3);
 }
+.inbox-escalated {
+  color: var(--hold-deep);
+  font-weight: 500;
+}
 .inbox-status {
   grid-area: status;
   align-self: center;
