@@ -16,6 +16,7 @@ export function CaseView({ item, base, heading = true }: { item: PlanCase; base:
           <span className="faint small">
             {PRIORITY_WORD[item.priority]} · r{item.revision}
           </span>
+          {item.stale ? <StatusChip status="stale" word="Stale" /> : null}
         </p>
       ) : null}
       {item.preconditions ? (

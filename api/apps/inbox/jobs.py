@@ -3,7 +3,7 @@ Celery beat queues them for every organisation with `for_each_org` (see CELERY_B
 """
 
 from apps.core.jobs import job_handler
-from apps.inbox import reminders
+from apps.inbox import reminders, stale_check
 
 
 @job_handler("reminders", max_retries=3)
@@ -18,3 +18,10 @@ def digest_job(job) -> None:
     """Hourly: send the daily digest to whoever's local time has reached 07:00."""
     sent = reminders.run_digest(job.org_id)
     job.set_progress(1, 1, f"{sent} sent")
+
+
+@job_handler("stale_check", max_retries=3)
+def stale_check_job(job) -> None:
+    """Nightly: count the test cases that have gone stale (FR-TC-05)."""
+    counts = stale_check.run_stale_check(job.org_id)
+    job.set_progress(1, 1, f"{sum(counts.values())} stale")

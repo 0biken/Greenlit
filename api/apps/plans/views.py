@@ -99,6 +99,10 @@ class PlanCaseSerializer(serializers.Serializer):
     expected = serializers.CharField()
     priority = serializers.ChoiceField(choices=Priority.choices)
     requirements = CaseRequirementSerializer(many=True)
+    stale = serializers.BooleanField(
+        help_text="No passed or failed result within the project's stale window, or a linked "
+        "requirement changed since the case was written"
+    )
 
 
 class PlanVersionDetailSerializer(serializers.Serializer):

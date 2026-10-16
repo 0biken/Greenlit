@@ -218,6 +218,11 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 60 * 60,  # hourly; each run sends to whoever's local time has reached 07:00
         "args": ["digest"],
     },
+    "stale_check": {
+        "task": "greenlit.for_each_org",
+        "schedule": 24 * 60 * 60,  # nightly
+        "args": ["stale_check"],
+    },
 }
 
 # Feature flags (apps/core/flags.py). Empty by default: a module is off until a deployment lists it.

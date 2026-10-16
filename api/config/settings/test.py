@@ -11,6 +11,11 @@ CACHES = {"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}
 # enforcement switch it on themselves, and test_defaults checks the real default.
 ENFORCE_MFA_ROLES = []
 
+# Tests never call a real model, whatever api/.env says: the stub drafts by rule, and tests that
+# need other replies script them with apps.ai.tests.fakes.Scripted.
+AI_PROVIDER = "apps.ai.providers.StubProvider"
+GEMINI_API_KEY = ""
+
 # No waiting between tries when a test makes the AI provider fail.
 AI_RETRY_WAITS = (0, 0, 0)
 

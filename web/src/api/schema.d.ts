@@ -1318,6 +1318,8 @@ export interface components {
             expected: string;
             priority: components["schemas"]["SeverityEnum"];
             requirements: components["schemas"]["CaseRequirement"][];
+            /** @description No passed or failed result within the project's stale window, or a linked requirement changed since the case was written */
+            stale: boolean;
             retired: boolean;
             plans: components["schemas"]["CasePlan"][];
             revisions: components["schemas"]["CaseRevisionRow"][];
@@ -1846,6 +1848,8 @@ export interface components {
             expected: string;
             priority: components["schemas"]["SeverityEnum"];
             requirements: components["schemas"]["CaseRequirement"][];
+            /** @description No passed or failed result within the project's stale window, or a linked requirement changed since the case was written */
+            stale: boolean;
         };
         PlanCreate: {
             title: string;

@@ -51,6 +51,7 @@ const asCase = (d: CaseDraft): PlanCase => ({
   expected: d.expected,
   priority: d.priority,
   requirements: d.requirements.map((r) => ({ display_id: r.display_id, number: r.number, title: r.title, stale: false })),
+  stale: false,
 })
 
 function Review({ projectKey, data }: { projectKey: string; data: CaseDraftsDetail }) {

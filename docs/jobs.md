@@ -44,7 +44,7 @@ A job delivered twice is run once. A job marked `running` whose worker has not r
 
 ## Schedules
 
-`for_each_org(kind)` queues one `kind` job per organisation, reading `org_registry`, a table of organisation IDs only that a database trigger fills. Point Celery beat at it for reminders and digests (M6).
+`for_each_org(kind)` queues one `kind` job per organisation, reading `org_registry`, a table of organisation IDs only that a database trigger fills. Point Celery beat at it for reminders and digests (M6). The nightly `stale_check` counts stale test cases per project (M6-02); staleness itself is derived on read, so the job marks nothing and sends no email, because stale tests already reach people through the Inbox and the digest.
 
 ## Running locally
 

@@ -1,6 +1,7 @@
 """Reading plans, versions and cases for the plan screens (M3-10). Writing is in `services.py`."""
 
 from django.db.models import Count
+from django.utils import timezone
 
 from apps.core.choices import ReviewState
 from apps.core.models import CounterKind, Membership, Project, display_name
@@ -138,7 +139,7 @@ def _requirements(revision_ids: list) -> dict:
     return out
 
 
-def _case_row(revision: CaseRevision, requirements: list) -> dict:
+def _case_row(revision: CaseRevision, requirements: list, stale: bool = False) -> dict:
     return {
         "case": case_id(revision.test_case),
         "number": revision.test_case.display_no,
@@ -149,6 +150,7 @@ def _case_row(revision: CaseRevision, requirements: list) -> dict:
         "expected": revision.expected,
         "priority": revision.priority,
         "requirements": requirements,
+        "stale": stale,
     }
 
 
@@ -159,10 +161,20 @@ def version_detail(version: PlanVersion) -> dict:
         .order_by("position")
     )
     requirements = _requirements([p.case_revision_id for p in pointers])
+    # Stale is derived, never stored (FR-TC-05): the same rule the Inbox and nightly check use.
+    project = Project.objects.filter(pk=version.plan.project_id)
+    stale = {i.target_id for i in derived.stale(project, timezone.now())}
     return {
         "number": version.number,
         "state": version.state,
-        "cases": [_case_row(p.case_revision, requirements[p.case_revision_id]) for p in pointers],
+        "cases": [
+            _case_row(
+                p.case_revision,
+                requirements[p.case_revision_id],
+                str(p.case_revision.test_case_id) in stale,
+            )
+            for p in pointers
+        ],
     }
 
 

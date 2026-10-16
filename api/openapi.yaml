@@ -2833,6 +2833,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CaseRequirement'
+        stale:
+          type: boolean
+          description: No passed or failed result within the project's stale window,
+            or a linked requirement changed since the case was written
         retired:
           type: boolean
         plans:
@@ -2859,6 +2863,7 @@ components:
       - retired
       - revision
       - revisions
+      - stale
       - steps
       - title
     CaseDraft:
@@ -4177,6 +4182,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CaseRequirement'
+        stale:
+          type: boolean
+          description: No passed or failed result within the project's stale window,
+            or a linked requirement changed since the case was written
       required:
       - case
       - expected
@@ -4185,6 +4194,7 @@ components:
       - priority
       - requirements
       - revision
+      - stale
       - steps
       - title
     PlanCreate:
