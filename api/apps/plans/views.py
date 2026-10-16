@@ -6,16 +6,26 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 
-from apps.core.choices import Priority
+from apps.ai.serializers import AcceptManySerializer, ReviewSerializer
+from apps.core.choices import Priority, ReviewState
 from apps.core.flags import flag_required
 from apps.core.models import CounterKind, Project
 from apps.core.numbering import parse_display_id
 from apps.core.policy import Action, project_or_404, requires
 from apps.core.services import ServiceError
+from apps.core.views_jobs import JobProgressSerializer
 from apps.core.views_orgs import _run
-from apps.plans import queries, services
+from apps.plans import drafting, queries, services
 from apps.plans.diff import diff_versions
-from apps.plans.models import PlanVersion, PlanVersionCase, TestCase, TestPlan, VersionState
+from apps.plans.models import (
+    CaseRevision,
+    CaseType,
+    PlanVersion,
+    PlanVersionCase,
+    TestCase,
+    TestPlan,
+    VersionState,
+)
 from apps.requirements.models import Requirement
 
 # --- shapes ----------------------------------------------------------------------------------
@@ -31,6 +41,7 @@ class PlanRowSerializer(serializers.Serializer):
     cases = serializers.IntegerField()
     has_draft = serializers.BooleanField()
     draft_submitted = serializers.BooleanField()
+    case_drafts = serializers.IntegerField(help_text="AI-drafted cases waiting for review")
 
 
 class PlanVersionRowSerializer(serializers.Serializer):
@@ -63,6 +74,7 @@ class PlanDetailSerializer(serializers.Serializer):
     number = serializers.IntegerField()
     title = serializers.CharField()
     scope = serializers.CharField(allow_blank=True)
+    case_drafts = serializers.IntegerField()
     version = serializers.CharField(allow_null=True)
     versions = PlanVersionRowSerializer(many=True)
     draft = PlanDraftSerializer(allow_null=True)
@@ -470,4 +482,158 @@ def roll_back(request, key: str, plan_id: str, version: str):
 def case_detail(request, key: str, case_id: str):
     """A test case: what it says now, the plans it is in, its revisions and recent results."""
     case = case_or_404(project_or_404(request, key), case_id)
+    # A drafted case nobody accepted (or one that was rejected) is not a test case yet.
+    if not CaseRevision.objects.filter(test_case=case, review_state=ReviewState.ACCEPTED).exists():
+        raise NotFound()
     return Response(CaseDetailSerializer(queries.case_detail(case)).data)
+
+
+# --- cases drafted by AI (M3-08) -------------------------------------------------------------
+
+
+class DraftRequirementSerializer(serializers.Serializer):
+    display_id = serializers.CharField()
+    number = serializers.IntegerField()
+    title = serializers.CharField()
+    text = serializers.CharField()
+
+
+class CaseDraftSerializer(serializers.Serializer):
+    case = serializers.CharField()
+    number = serializers.IntegerField()
+    title = serializers.CharField()
+    case_type = serializers.ChoiceField(choices=CaseType.choices, allow_blank=True)
+    priority = serializers.ChoiceField(choices=Priority.choices)
+    preconditions = serializers.CharField(allow_blank=True)
+    steps = serializers.ListField(child=serializers.CharField())
+    expected = serializers.CharField()
+    review_state = serializers.ChoiceField(choices=ReviewState.choices)
+    requirements = DraftRequirementSerializer(many=True)
+    assumptions = serializers.ListField(child=serializers.CharField())
+    possible_duplicate_of = serializers.CharField(allow_null=True)
+
+
+class CaseDraftActionsSerializer(serializers.Serializer):
+    review = serializers.BooleanField()
+
+
+class CaseDraftsSerializer(serializers.Serializer):
+    plan = serializers.CharField()
+    plan_no = serializers.IntegerField()
+    title = serializers.CharField()
+    drafts = serializers.IntegerField()
+    accepted = serializers.IntegerField()
+    rejected = serializers.IntegerField()
+    items = CaseDraftSerializer(many=True)
+    gaps = serializers.ListField(child=serializers.CharField())
+    left_out = serializers.IntegerField(help_text="Drafts dropped because a check failed")
+    job = JobProgressSerializer(allow_null=True)
+    allowance_message = serializers.CharField(allow_blank=True)
+    fast_accepts = serializers.IntegerField(allow_null=True)
+    actions = CaseDraftActionsSerializer()
+
+
+class DraftCasesRequestSerializer(serializers.Serializer):
+    requirements = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        required=False,
+        max_length=drafting.MAX_REQUIREMENTS,
+        help_text="Requirement numbers. Default: accepted requirements no accepted case covers",
+    )
+
+
+def _case_drafts(request, plan: TestPlan) -> Response:
+    plan = TestPlan.objects.get(pk=plan.pk)
+    data = queries.case_drafts(plan, request._request.membership)
+    return Response(CaseDraftsSerializer(data).data)
+
+
+@extend_schema(request=DraftCasesRequestSerializer, responses=CaseDraftsSerializer)
+@api_view(["GET", "POST"])
+@permission_classes(
+    [*requires({"GET": Action.VIEW, "POST": Action.WRITE_TESTING}), flag_required("tc")]
+)
+def case_drafts(request, key: str, plan_id: str):
+    """GET: the cases AI drafted for this plan, with the requirements each covers. POST: draft
+    cases for the given requirements, or for every accepted requirement nothing covers yet
+    (FR-PLAN-03). Drafts count nowhere until a person accepts them."""
+    project = project_or_404(request, key)
+    plan = plan_or_404(project, plan_id)
+    if request.method == "POST":
+        body = DraftCasesRequestSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        numbers = body.validated_data.get("requirements")
+
+        def queue() -> None:
+            chosen = (
+                drafting.uncovered_requirements(project)[: drafting.MAX_REQUIREMENTS]
+                if numbers is None
+                else _linked(project, numbers)
+            )
+            drafting.queue_case_drafting(plan, request.user, chosen)
+
+        _run(queue)
+    return _case_drafts(request, plan)
+
+
+def _draft_revision(project: Project, plan: TestPlan, case_id: str) -> CaseRevision:
+    return _run(drafting.draft_revision, plan, case_or_404(project, case_id))
+
+
+@extend_schema(request=CaseEditSerializer, responses=CaseDraftsSerializer)
+@api_view(["PATCH"])
+@permission_classes([*requires(Action.WRITE_TESTING), flag_required("tc")])
+def case_draft(request, key: str, plan_id: str, case_id: str):
+    """Edit a drafted case before deciding on it. It stays a draft."""
+    project = project_or_404(request, key)
+    plan = plan_or_404(project, plan_id)
+    revision = _draft_revision(project, plan, case_id)
+    body = CaseEditSerializer(data=request.data, partial=True)
+    body.is_valid(raise_exception=True)
+    data = dict(body.validated_data)
+    data.pop("position", None)
+
+    def edit() -> None:
+        numbers = data.pop("requirements", None)
+        linked = None if numbers is None else _linked(project, numbers)
+        drafting.edit_case_draft(plan, revision, request.user, requirements=linked, **data)
+
+    _run(edit)
+    return _case_drafts(request, plan)
+
+
+@extend_schema(request=ReviewSerializer, responses={204: None})
+@api_view(["POST"])
+@permission_classes([*requires(Action.WRITE_TESTING), flag_required("tc")])
+def case_draft_review(request, key: str, plan_id: str, case_id: str):
+    """Accept or reject a drafted case (FR-PLAN-04). An accepted case joins the plan's draft
+    version, which is opened if the plan has none."""
+    project = project_or_404(request, key)
+    plan = plan_or_404(project, plan_id)
+    revision = _draft_revision(project, plan, case_id)
+    body = ReviewSerializer(data=request.data)
+    body.is_valid(raise_exception=True)
+    data = body.validated_data
+    _run(
+        drafting.decide_case,
+        plan,
+        revision,
+        request.user,
+        data["decision"],
+        reason=data["reason"],
+        viewed_ms=data.get("viewed_ms"),
+    )
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@extend_schema(request=AcceptManySerializer, responses=CaseDraftsSerializer)
+@api_view(["POST"])
+@permission_classes([*requires(Action.WRITE_TESTING), flag_required("tc")])
+def case_drafts_accept(request, key: str, plan_id: str):
+    """Accept up to 20 drafted cases at once (AI §6)."""
+    plan = plan_or_404(project_or_404(request, key), plan_id)
+    body = AcceptManySerializer(data=request.data)
+    body.is_valid(raise_exception=True)
+    data = body.validated_data
+    _run(drafting.accept_cases, plan, request.user, data["numbers"], data.get("viewed_ms"))
+    return _case_drafts(request, plan)

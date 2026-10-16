@@ -2,6 +2,7 @@ import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/re
 import { ApiError, api, download, getCurrentOrg } from './client'
 import type {
   CaseDetail,
+  CaseDraftsDetail,
   CaseEdit,
   CaseWrite,
   DefectDetail,
@@ -65,6 +66,7 @@ export const keys = {
     ['org', org(), 'project', key, 'plan', id, 'version', version] as const,
   planDiff: (key: string, id: string, from: string, to: string) =>
     ['org', org(), 'project', key, 'plan', id, 'diff', from, to] as const,
+  caseDrafts: (key: string, id: string) => ['org', org(), 'project', key, 'plan', id, 'case-drafts'] as const,
   testCase: (key: string, id: string) => ['org', org(), 'project', key, 'case', id] as const,
   requirements: (key: string, filters: RequirementFilters) =>
     ['org', org(), 'project', key, 'requirements', filters] as const,
@@ -551,6 +553,45 @@ export function useReview(key: string, sourceId: string) {
           return api(requirementUrl(key, String(action.number)), { method: 'PATCH', body: action.body })
         case 'draft_again':
           return api(`${source}draft/`, { method: 'POST' })
+      }
+    },
+    onSuccess: invalidate,
+  })
+}
+
+// ---- cases drafted by AI -----------------------------------------------------------------------
+
+export const useCaseDrafts = (key: string, planId: string) =>
+  useQuery({
+    queryKey: keys.caseDrafts(key, planId),
+    queryFn: () => api<CaseDraftsDetail>(`${planUrl(key, planId)}case-drafts/`),
+    refetchInterval: (query) => (query.state.data?.job?.running ? BUSY_EVERY_MS : false),
+  })
+
+export type CaseReviewAction =
+  | { do: 'draft_cases'; requirements?: number[] }
+  | { do: 'decide'; number: number; decision: 'accepted' | 'rejected'; reason?: string; viewed_ms?: number }
+  | { do: 'accept_many'; numbers: number[]; viewed_ms?: number }
+  | { do: 'edit'; number: number; body: CaseEdit }
+
+/** Everything the case review screen does to one plan's drafted cases. */
+export function useCaseReview(key: string, planId: string) {
+  const invalidate = useInvalidateWork()
+  return useMutation({
+    mutationFn: (action: CaseReviewAction) => {
+      const base = `${planUrl(key, planId)}case-drafts/`
+      switch (action.do) {
+        case 'draft_cases':
+          return api(base, { method: 'POST', body: action.requirements ? { requirements: action.requirements } : {} })
+        case 'decide':
+          return api(`${base}${action.number}/review/`, {
+            method: 'POST',
+            body: { decision: action.decision, reason: action.reason ?? '', viewed_ms: action.viewed_ms },
+          })
+        case 'accept_many':
+          return api(`${base}accept/`, { method: 'POST', body: { numbers: action.numbers, viewed_ms: action.viewed_ms } })
+        case 'edit':
+          return api(`${base}${action.number}/`, { method: 'PATCH', body: action.body })
       }
     },
     onSuccess: invalidate,

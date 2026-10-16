@@ -22,6 +22,8 @@ QUOTE_LENGTH = "quote_length"
 UNKNOWN_ID = "unknown_id"
 TOO_LONG = "too_long"
 OUTSIDE_IMAGE = "outside_image"
+NO_REQUIREMENT = "no_requirement"
+EMPTY_STEP = "empty_step"
 
 
 def matches_schema(reply: object, schema: dict) -> bool:
@@ -138,4 +140,41 @@ def check_requirements(
         out.kept.append(
             {**item, "start": where[0], "end": where[1], "possible_duplicate_of": duplicate}
         )
+    return out
+
+
+def _same_steps(steps: list[str], other: list[str]) -> bool:
+    a, b = "\n".join(steps).lower(), "\n".join(other).lower()
+    return SequenceMatcher(None, a, b).ratio() >= DUPLICATE_RATIO
+
+
+def check_cases(items: list[dict], *, asked: set[str], existing: list[dict]) -> Checked:
+    """F2. `asked` are the requirement IDs sent in this request: a case may cite only those,
+    so an ID the model made up, or one it was not given, drops the case. `existing` are this
+    project's accepted cases (`[{display_id, steps, requirement_ids}]`). Each kept item has
+    its `requirement_ids` in upper case and `possible_duplicate_of` when an accepted case on
+    one of the same requirements has nearly the same steps."""
+    asked = {r.upper() for r in asked}
+    out = Checked()
+    for item in items:
+        cited = [r.upper() for r in item["requirement_ids"]]
+        if len(item["title"]) > TITLE_MAX or len(item["steps"]) > STEPS_MAX:
+            out.dropped.append((TOO_LONG, item))
+        elif not cited:
+            out.dropped.append((NO_REQUIREMENT, item))
+        elif not set(cited) <= asked:
+            out.dropped.append((UNKNOWN_ID, item))
+        elif not item["steps"] or not all(step.strip() for step in item["steps"]):
+            out.dropped.append((EMPTY_STEP, item))
+        else:
+            duplicate = next(
+                (
+                    case["display_id"]
+                    for case in existing
+                    if set(cited) & {r.upper() for r in case["requirement_ids"]}
+                    and _same_steps(item["steps"], case["steps"])
+                ),
+                None,
+            )
+            out.kept.append({**item, "requirement_ids": cited, "possible_duplicate_of": duplicate})
     return out

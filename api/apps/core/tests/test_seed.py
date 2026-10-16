@@ -134,3 +134,18 @@ def test_the_seed_leaves_drafted_requirements_waiting_for_review(
         drafts = Requirement.objects.filter(source_document=document)
         assert document.state == "ready" and drafts.count() == 5
         assert set(drafts.values_list("review_state", "origin")) == {("draft", "ai")}
+
+
+def test_the_seed_leaves_drafted_cases_waiting_for_review(django_capture_on_commit_callbacks):
+    from apps.plans import drafting
+    from apps.plans.models import CaseRevision, TestPlan
+
+    with django_capture_on_commit_callbacks(execute=True):
+        seed()
+    with org_scope(karma_id()):
+        plan = TestPlan.objects.get(title="Transfers")
+        waiting = CaseRevision.objects.filter(pk__in=drafting.undecided(plan).values("target_id"))
+        assert sorted(waiting.values_list("case_type", "review_state")) == [
+            ("negative", "draft"),
+            ("positive", "draft"),
+        ]

@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { ApiError } from '../../api/client'
-import { serverMessage, usePlan, usePlanAction, usePlanVersion, type PlanAction } from '../../api/queries'
+import {
+  serverMessage,
+  useCaseReview,
+  usePlan,
+  usePlanAction,
+  usePlanVersion,
+  type PlanAction,
+} from '../../api/queries'
 import type { PlanDetail } from '../../api/records'
 import { Button } from '../../design/Button'
 import { IdTag } from '../../design/IdTag'
@@ -40,6 +47,7 @@ function PlanRecord({ projectKey, plan }: { projectKey: string; plan: PlanDetail
   const act = usePlanAction(key, String(plan.number))
   const [confirm, setConfirm] = useState<null | { title: string; body: string; label: string; action: PlanAction }>(null)
   const [major, setMajor] = useState(false)
+  const drafting = useCaseReview(key, String(plan.number))
 
   // Which version's cases are shown: the one asked for, else the current one, else the draft.
   const asked = params.get('v')
@@ -74,6 +82,14 @@ function PlanRecord({ projectKey, plan }: { projectKey: string; plan: PlanDetail
           </h1>
           {plan.scope ? <p className="page-sub">{plan.scope}</p> : null}
         </div>
+        {plan.actions.edit && plan.uncovered.length && !plan.case_drafts ? (
+          <Button
+            disabled={drafting.isPending}
+            onClick={() => drafting.mutate({ do: 'draft_cases' }, { onSuccess: () => navigate(`${here}/drafts`) })}
+          >
+            {drafting.isPending ? 'Drafting…' : 'Draft cases with AI'}
+          </Button>
+        ) : null}
         {plan.actions.edit && !plan.draft ? (
           <Button
             variant="primary"
@@ -89,6 +105,23 @@ function PlanRecord({ projectKey, plan }: { projectKey: string; plan: PlanDetail
       {act.isError ? (
         <p className="field-error" role="alert">
           {serverMessage(act.error) ?? "That didn't work. Try again."}
+        </p>
+      ) : null}
+      {drafting.isError ? (
+        <p className="field-error" role="alert">
+          {serverMessage(drafting.error) ?? "Couldn't start drafting. Try again."}
+        </p>
+      ) : null}
+      {plan.case_drafts ? (
+        <p className="draft-bar">
+          <span>
+            <StatusChip status="draft" word="Drafted by AI" /> {plan.case_drafts}{' '}
+            {plan.case_drafts === 1 ? 'case waits' : 'cases wait'} for review. They are not in the plan until someone
+            accepts them.
+          </span>
+          <Link className="btn btn-secondary btn-sm" to={`${here}/drafts`}>
+            Review drafts
+          </Link>
         </p>
       ) : null}
 

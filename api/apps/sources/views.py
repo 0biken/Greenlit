@@ -6,28 +6,18 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
 
-from apps.ai.models import RejectReason
+from apps.ai.serializers import AcceptManySerializer, ReviewSerializer
 from apps.core.choices import Origin, Priority, ReviewState
 from apps.core.flags import flag_required
 from apps.core.models import Project
 from apps.core.policy import Action, project_or_404, requires
+from apps.core.views_jobs import JobProgressSerializer
 from apps.core.views_orgs import _run
 from apps.requirements.views import requirement_or_404
 from apps.sources import queries, services
 from apps.sources.models import SourceDocument, SourceKind, SourceState
 
 # --- shapes ----------------------------------------------------------------------------------
-
-
-class SourceJobSerializer(serializers.Serializer):
-    id = serializers.UUIDField()
-    kind = serializers.CharField()
-    state = serializers.CharField()
-    running = serializers.BooleanField()
-    progress = serializers.CharField(allow_blank=True)
-    done = serializers.IntegerField()
-    total = serializers.IntegerField()
-    error = serializers.CharField(allow_blank=True)
 
 
 class SourceRowSerializer(serializers.Serializer):
@@ -44,7 +34,7 @@ class SourceRowSerializer(serializers.Serializer):
     drafts = serializers.IntegerField()
     accepted = serializers.IntegerField()
     rejected = serializers.IntegerField()
-    job = SourceJobSerializer(allow_null=True)
+    job = JobProgressSerializer(allow_null=True)
 
 
 class SourcePageSerializer(serializers.Serializer):
@@ -90,23 +80,6 @@ class SourceCreateSerializer(serializers.Serializer):
     text = serializers.CharField(
         max_length=services.MAX_PASTED_CHARS, required=False, help_text="Or the PRD pasted as text"
     )
-
-
-class ReviewSerializer(serializers.Serializer):
-    decision = serializers.ChoiceField(choices=(ReviewState.ACCEPTED, ReviewState.REJECTED))
-    reason = serializers.ChoiceField(
-        choices=RejectReason.choices, required=False, allow_blank=True, default=""
-    )
-    viewed_ms = serializers.IntegerField(
-        min_value=0, required=False, help_text="How long the draft was on screen before deciding"
-    )
-
-
-class AcceptManySerializer(serializers.Serializer):
-    numbers = serializers.ListField(
-        child=serializers.IntegerField(min_value=1), min_length=1, max_length=20
-    )
-    viewed_ms = serializers.IntegerField(min_value=0, required=False)
 
 
 # --- lookups ---------------------------------------------------------------------------------

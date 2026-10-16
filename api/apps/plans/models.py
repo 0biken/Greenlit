@@ -20,6 +20,8 @@ class TestPlan(TenantModel):
     current_version = models.ForeignKey(
         "plans.PlanVersion", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
     )
+    # The newest AI case-drafting job for this plan, for showing progress (M3-08).
+    draft_job_id = models.UUIDField(null=True, blank=True)
 
     class Meta:
         constraints = [
@@ -79,6 +81,13 @@ class TestCase(TenantModel):
         ]
 
 
+class CaseType(models.TextChoices):
+    POSITIVE = "positive"
+    NEGATIVE = "negative"
+    EDGE = "edge"
+    ACCESSIBILITY = "accessibility"
+
+
 class CaseRevision(TenantModel):
     test_case = models.ForeignKey(TestCase, on_delete=models.PROTECT, related_name="revisions")
     rev_no = models.PositiveIntegerField()
@@ -91,6 +100,8 @@ class CaseRevision(TenantModel):
         max_length=10, choices=ReviewState.choices, default=ReviewState.DRAFT
     )
     origin = models.CharField(max_length=10, choices=Origin.choices, default=Origin.HUMAN)
+    # What kind of check it is (AI §3 F2). Empty for cases nobody has classified.
+    case_type = models.CharField(max_length=15, choices=CaseType.choices, blank=True)
 
     class Meta:
         constraints = [

@@ -12,7 +12,7 @@ import { ProjectNav } from '../projects/ProjectNav'
 import { CAN_WRITE } from '../requirements/RequirementsList'
 import '../defects/defects.css'
 import '../plans/plans.css'
-import './sources.css'
+import '../review/review.css'
 
 // Sources (UX screen 5, M2-01): the documents requirements are drafted from. Upload a PRD or
 // paste its text; Greenlit reads it and drafts requirements for a person to review.

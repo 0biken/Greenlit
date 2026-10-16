@@ -66,3 +66,57 @@ Extract the testable requirements stated in the document section (AI feature F1)
         },
     },
 )
+
+CASE_TYPES = ["positive", "negative", "edge", "accessibility"]
+
+DRAFT_CASES = Feature(
+    key="draft_cases",
+    prompt_version="f2-1",
+    instructions="""\
+Draft test cases for the requirements in the document section (AI feature F2). Each
+requirement starts with its ID in square brackets, such as [REQ-12].
+- Give every requirement at least one positive case, and one negative case where a negative
+  case makes sense.
+- One action per step. Steps are in the order a tester does them.
+- "expected" must be checkable: "the order confirmation shows the order number", not "works
+  correctly".
+- Never assume data, URLs or field names the requirement does not mention. Where they are
+  needed write a placeholder in square brackets, such as [valid card number], and say what you
+  assumed in "assumptions".
+- "requirement_ids" lists the IDs, from this document only, that the case covers.
+- Do not repeat a case listed under <existing>.
+- "gaps" lists what a requirement leaves unsaid that a tester would need to know.""",
+    schema={
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["cases", "gaps"],
+        "properties": {
+            "cases": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": [
+                        "title",
+                        "type",
+                        "priority",
+                        "requirement_ids",
+                        "steps",
+                        "expected",
+                    ],
+                    "properties": {
+                        "title": {"type": "string", "minLength": 1},
+                        "type": {"enum": CASE_TYPES},
+                        "priority": {"enum": PRIORITIES},
+                        "requirement_ids": {"type": "array", "items": {"type": "string"}},
+                        "preconditions": {"type": "string"},
+                        "steps": {"type": "array", "items": {"type": "string"}},
+                        "expected": {"type": "string", "minLength": 1},
+                        "assumptions": {"type": "array", "items": {"type": "string"}},
+                    },
+                },
+            },
+            "gaps": {"type": "array", "items": {"type": "string"}},
+        },
+    },
+)

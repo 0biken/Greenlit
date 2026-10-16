@@ -396,6 +396,9 @@ def test_alpha_cannot_reach_bravos_requirements_plans_or_cases_under_its_own_pro
         ("post", f"{base}/plans/{plan}/versions/1.0/roll-back/", {}),
         ("get", f"{base}/cases/{case}/", None),
         ("get", f"{base}/sources/{bravo['source'].pk}/", None),
+        ("get", f"{base}/plans/{plan}/case-drafts/", None),
+        ("post", f"{base}/plans/{plan}/case-drafts/", {}),
+        ("post", f"{base}/plans/{plan}/case-drafts/accept/", {"numbers": [2]}),
         ("post", f"{base}/sources/{bravo['source'].pk}/draft/", {}),
         ("post", f"{base}/sources/{bravo['source'].pk}/accept/", {"numbers": [2]}),
         ("post", f"{base}/requirements/{bravo_draft}/review/", {"decision": "accepted"}),
@@ -405,6 +408,20 @@ def test_alpha_cannot_reach_bravos_requirements_plans_or_cases_under_its_own_pro
             url, data=body, content_type="application/json", headers=headers
         )
         assert response.status_code == 404, f"{method.upper()} {url}: {response.status_code}"
+
+    # Bravo's drafted case cannot be reviewed or edited through one of Alpha's own plans.
+    theirs = bravo["case_draft"].pk
+    for method, path, body in (
+        ("post", f"case-drafts/{theirs}/review/", {"decision": "accepted"}),
+        ("patch", f"case-drafts/{theirs}/", {"title": "Taken over"}),
+    ):
+        response = getattr(client, method)(
+            f"{base}/plans/{alpha['plan'].pk}/{path}",
+            data=body,
+            content_type="application/json",
+            headers=headers,
+        )
+        assert response.status_code == 404, f"{method.upper()} {path}: {response.status_code}"
 
     # Bravo's file cannot be made one of Alpha's sources: it names nothing here.
     from apps.sources.models import SourceDocument
@@ -444,5 +461,6 @@ def test_alpha_cannot_reach_bravos_requirements_plans_or_cases_under_its_own_pro
     set_scope(world.bravo.id, world.bravo_owner.pk)
     assert Requirement.objects.get(pk=bravo["requirement"].pk).revision == 1
     assert not PlanVersion.objects.filter(state="draft").exists()
-    assert CaseRevision.objects.count() == 1
+    assert CaseRevision.objects.filter(review_state="accepted").count() == 1
+    assert CaseRevision.objects.filter(review_state="draft").count() == 2  # none decided
     assert Requirement.objects.filter(review_state="draft").count() == 2  # none accepted

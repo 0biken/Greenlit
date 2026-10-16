@@ -591,6 +591,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{key}/plans/{plan_id}/case-drafts/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET: the cases AI drafted for this plan, with the requirements each covers. POST: draft
+         *     cases for the given requirements, or for every accepted requirement nothing covers yet
+         *     (FR-PLAN-03). Drafts count nowhere until a person accepts them.
+         */
+        get: operations["projects_plans_case_drafts_retrieve"];
+        put?: never;
+        /**
+         * @description GET: the cases AI drafted for this plan, with the requirements each covers. POST: draft
+         *     cases for the given requirements, or for every accepted requirement nothing covers yet
+         *     (FR-PLAN-03). Drafts count nowhere until a person accepts them.
+         */
+        post: operations["projects_plans_case_drafts_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/plans/{plan_id}/case-drafts/{case_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description Edit a drafted case before deciding on it. It stays a draft. */
+        patch: operations["projects_plans_case_drafts_partial_update"];
+        trace?: never;
+    };
+    "/api/projects/{key}/plans/{plan_id}/case-drafts/{case_id}/review/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Accept or reject a drafted case (FR-PLAN-04). An accepted case joins the plan's draft
+         *     version, which is opened if the plan has none.
+         */
+        post: operations["projects_plans_case_drafts_review_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/plans/{plan_id}/case-drafts/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Accept up to 20 drafted cases at once (AI §6). */
+        post: operations["projects_plans_case_drafts_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/{key}/plans/{plan_id}/diff/": {
         parameters: {
             query?: never;
@@ -1243,6 +1323,39 @@ export interface components {
             revisions: components["schemas"]["CaseRevisionRow"][];
             results: components["schemas"]["CaseResultRow"][];
         };
+        CaseDraft: {
+            case: string;
+            number: number;
+            title: string;
+            case_type: components["schemas"]["CaseTypeEnum"] | components["schemas"]["BlankEnum"];
+            priority: components["schemas"]["SeverityEnum"];
+            preconditions: string;
+            steps: string[];
+            expected: string;
+            review_state: components["schemas"]["ReviewStateEnum"];
+            requirements: components["schemas"]["DraftRequirement"][];
+            assumptions: string[];
+            possible_duplicate_of: string | null;
+        };
+        CaseDraftActions: {
+            review: boolean;
+        };
+        CaseDrafts: {
+            plan: string;
+            plan_no: number;
+            title: string;
+            drafts: number;
+            accepted: number;
+            rejected: number;
+            items: components["schemas"]["CaseDraft"][];
+            gaps: string[];
+            /** @description Drafts dropped because a check failed */
+            left_out: number;
+            job: components["schemas"]["JobProgress"] | null;
+            allowance_message: string;
+            fast_accepts: number | null;
+            actions: components["schemas"]["CaseDraftActions"];
+        };
         CasePlan: {
             display_id: string;
             number: number;
@@ -1273,6 +1386,14 @@ export interface components {
             at: string;
             by: string | null;
         };
+        /**
+         * @description * `positive` - Positive
+         *     * `negative` - Negative
+         *     * `edge` - Edge
+         *     * `accessibility` - Accessibility
+         * @enum {string}
+         */
+        CaseTypeEnum: "positive" | "negative" | "edge" | "accessibility";
         CaseWrite: {
             title: string;
             preconditions?: string;
@@ -1424,6 +1545,16 @@ export interface components {
             /** Format: date-time */
             expires_at: string;
         };
+        DraftCasesRequest: {
+            /** @description Requirement numbers. Default: accepted requirements no accepted case covers */
+            requirements?: number[];
+        };
+        DraftRequirement: {
+            display_id: string;
+            number: number;
+            title: string;
+            text: string;
+        };
         Evidence: {
             display_id: string;
             /** Format: uuid */
@@ -1551,6 +1682,18 @@ export interface components {
             started_at: string | null;
             /** Format: date-time */
             finished_at: string | null;
+        };
+        /** @description A job as a screen waiting on it shows it (`apps.core.jobs.describe`). */
+        JobProgress: {
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            state: string;
+            running: boolean;
+            progress: string;
+            done: number;
+            total: number;
+            error: string;
         };
         /**
          * @description * `prd` - Prd
@@ -1714,6 +1857,7 @@ export interface components {
             number: number;
             title: string;
             scope: string;
+            case_drafts: number;
             version: string | null;
             versions: components["schemas"]["PlanVersionRow"][];
             draft: components["schemas"]["PlanDraft"] | null;
@@ -1742,6 +1886,8 @@ export interface components {
             cases: number;
             has_draft: boolean;
             draft_submitted: boolean;
+            /** @description AI-drafted cases waiting for review */
+            case_drafts: number;
         };
         PlanVersionDetail: {
             number: string;
@@ -1823,7 +1969,7 @@ export interface components {
          *     * `not_testable` - Not Testable
          * @enum {string}
          */
-        ReasonEnum: "wrong" | "duplicate" | "too_vague" | "not_testable";
+        RejectReasonEnum: "wrong" | "duplicate" | "too_vague" | "not_testable";
         ReleaseBrief: {
             version: string;
             name: string;
@@ -2004,13 +2150,13 @@ export interface components {
         Review: {
             decision: components["schemas"]["ReviewDecisionEnum"];
             /** @default  */
-            reason: components["schemas"]["ReasonEnum"] | components["schemas"]["BlankEnum"];
+            reason: components["schemas"]["RejectReasonEnum"] | components["schemas"]["BlankEnum"];
             /** @description How long the draft was on screen before deciding */
             viewed_ms?: number;
         };
         /**
-         * @description * `accepted` - accepted
-         *     * `rejected` - rejected
+         * @description * `accepted` - Accepted
+         *     * `rejected` - Rejected
          * @enum {string}
          */
         ReviewDecisionEnum: "accepted" | "rejected";
@@ -2202,7 +2348,7 @@ export interface components {
             drafts: number;
             accepted: number;
             rejected: number;
-            job: components["schemas"]["SourceJob"] | null;
+            job: components["schemas"]["JobProgress"] | null;
             text_pages: components["schemas"]["SourcePage"][];
             items: components["schemas"]["SourceItem"][];
             gaps: string[];
@@ -2229,17 +2375,6 @@ export interface components {
             possible_duplicate_of: string | null;
             assumptions: string[];
         };
-        SourceJob: {
-            /** Format: uuid */
-            id: string;
-            kind: string;
-            state: string;
-            running: boolean;
-            progress: string;
-            done: number;
-            total: number;
-            error: string;
-        };
         SourcePage: {
             page: number;
             /** @description Where this page starts in the whole text */
@@ -2262,7 +2397,7 @@ export interface components {
             drafts: number;
             accepted: number;
             rejected: number;
-            job: components["schemas"]["SourceJob"] | null;
+            job: components["schemas"]["JobProgress"] | null;
         };
         /**
          * @description * `active` - active
@@ -3417,6 +3552,141 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlanDetail"];
+                };
+            };
+        };
+    };
+    projects_plans_case_drafts_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseDrafts"];
+                };
+            };
+        };
+    };
+    projects_plans_case_drafts_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DraftCasesRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DraftCasesRequest"];
+                "multipart/form-data": components["schemas"]["DraftCasesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseDrafts"];
+                };
+            };
+        };
+    };
+    projects_plans_case_drafts_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                key: string;
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedCaseEdit"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedCaseEdit"];
+                "multipart/form-data": components["schemas"]["PatchedCaseEdit"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseDrafts"];
+                };
+            };
+        };
+    };
+    projects_plans_case_drafts_review_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                key: string;
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Review"];
+                "application/x-www-form-urlencoded": components["schemas"]["Review"];
+                "multipart/form-data": components["schemas"]["Review"];
+            };
+        };
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    projects_plans_case_drafts_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptMany"];
+                "application/x-www-form-urlencoded": components["schemas"]["AcceptMany"];
+                "multipart/form-data": components["schemas"]["AcceptMany"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseDrafts"];
                 };
             };
         };

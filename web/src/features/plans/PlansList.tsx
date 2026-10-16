@@ -74,7 +74,12 @@ export function PlansList() {
                   {p.version ? <span>Approved</span> : <span>Not approved yet</span>}
                 </span>
                 <span className="defect-status">
-                  {p.has_draft ? (
+                  {p.case_drafts ? (
+                    <StatusChip
+                      status="draft"
+                      word={p.case_drafts === 1 ? '1 drafted case to review' : `${p.case_drafts} drafted cases to review`}
+                    />
+                  ) : p.has_draft ? (
                     <StatusChip status="draft" word={p.draft_submitted ? 'Draft, awaiting approval' : 'Draft open'} />
                   ) : null}
                 </span>

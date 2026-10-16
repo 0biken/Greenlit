@@ -26,6 +26,19 @@ class JobSerializer(serializers.Serializer):
     finished_at = serializers.DateTimeField(allow_null=True)
 
 
+class JobProgressSerializer(serializers.Serializer):
+    """A job as a screen waiting on it shows it (`apps.core.jobs.describe`)."""
+
+    id = serializers.UUIDField()
+    kind = serializers.CharField()
+    state = serializers.CharField()
+    running = serializers.BooleanField()
+    progress = serializers.CharField(allow_blank=True)
+    done = serializers.IntegerField()
+    total = serializers.IntegerField()
+    error = serializers.CharField(allow_blank=True)
+
+
 @extend_schema(
     parameters=[OpenApiParameter("state", str, enum=JobState.values, required=False)],
     responses=JobSerializer(many=True),

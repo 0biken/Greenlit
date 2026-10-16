@@ -60,3 +60,6 @@ export type CaseEdit = S['PatchedCaseEdit']
 export type SourceRow = S['SourceRow']
 export type SourceDetail = S['SourceDetail']
 export type SourceItem = S['SourceItem']
+
+export type CaseDraftsDetail = S['CaseDrafts']
+export type CaseDraft = S['CaseDraft']

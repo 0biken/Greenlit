@@ -15,6 +15,7 @@ from django.db import connection
 from django.test import Client
 from django.utils import timezone
 
+from apps.ai.models import AiDraft
 from apps.core.models import (
     Invitation,
     Job,
@@ -127,6 +128,20 @@ SAMPLES = {
         "numbers": [ctx["fresh_draft"]()]
     },
     ("api/projects/<str:key>/plans/", "post"): lambda ctx: {"title": "Another plan"},
+    ("api/projects/<str:key>/plans/<str:plan_id>/case-drafts/", "post"): lambda ctx: {
+        "requirements": [ctx["requirement_no"]]
+    },
+    ("api/projects/<str:key>/plans/<str:plan_id>/case-drafts/accept/", "post"): lambda ctx: {
+        "numbers": [int(ctx["fresh_case_draft"]())]
+    },
+    (
+        "api/projects/<str:key>/plans/<str:plan_id>/case-drafts/<str:case_id>/",
+        "patch",
+    ): lambda ctx: {"title": "Renamed draft"},
+    (
+        "api/projects/<str:key>/plans/<str:plan_id>/case-drafts/<str:case_id>/review/",
+        "post",
+    ): lambda ctx: {"decision": "accepted"},
     ("api/projects/<str:key>/plans/<str:plan_id>/draft/", "post"): lambda ctx: {},
     ("api/projects/<str:key>/plans/<str:plan_id>/draft/", "delete"): lambda ctx: {},
     ("api/projects/<str:key>/plans/<str:plan_id>/draft/cases/", "post"): lambda ctx: {
@@ -304,6 +319,38 @@ def _org_with_a_member_of_each_role():
             )
         return made.display_no
 
+    # One plan whose AI-drafted cases are reviewed: each call gets its own draft to decide.
+    drafted_for = fresh_plan(drafted=False)
+
+    def fresh_case_draft() -> str:
+        """A case the AI drafted for that plan, waiting for review."""
+        with org_scope(org.id):
+            target = plans.TestPlan.objects.get(project=project, display_no=int(drafted_for))
+            revision = plans._new_case(
+                target,
+                None,
+                {
+                    "title": "A drafted case",
+                    "preconditions": "",
+                    "steps": ["Do it"],
+                    "expected": "Works.",
+                    "priority": "medium",
+                },
+                [requirement],
+                "draft",
+                "ai",
+                "positive",
+            )
+            AiDraft.objects.create(
+                org_id=org.id,
+                target_type="case_revision",
+                target_id=revision.pk,
+                flags={"plan": str(target.pk)},
+            )
+        return str(revision.test_case.display_no)
+
+    case_drafts = plan_base + "case-drafts/"
+
     def fresh_link() -> str:
         with org_scope(org.id):
             return str(create_link(signed, None)[0].pk)
@@ -311,6 +358,12 @@ def _org_with_a_member_of_each_role():
     signed_release = {"version": "6.0", "link_id": fresh_link}
     ctx = {
         "route_params": {
+            case_drafts + "accept/": {"plan_id": drafted_for},
+            case_drafts + "<str:case_id>/": {"plan_id": drafted_for, "case_id": fresh_case_draft},
+            case_drafts + "<str:case_id>/review/": {
+                "plan_id": drafted_for,
+                "case_id": fresh_case_draft,
+            },
             "api/projects/<str:key>/requirements/<str:requirement_id>/review/": {
                 "requirement_id": lambda: str(fresh_draft())
             },
@@ -327,6 +380,8 @@ def _org_with_a_member_of_each_role():
         },
         "fresh_member": fresh_member,
         "fresh_draft": fresh_draft,
+        "fresh_case_draft": fresh_case_draft,
+        "requirement_no": requirement.display_no,
         "file_id": str(upload.id),
         "plan_no": plan.display_no,
         "open_release": open_release.name,

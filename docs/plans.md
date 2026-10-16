@@ -57,7 +57,27 @@ Rolling back to 1.2 publishes a new version (say 1.5) with 1.2's cases. Nothing 
 
 `GET /api/projects/{key}/cases/{id}/` shows what a tester would run today (the published revision), the plans the case is in, its revisions and its last ten results. Cases are edited inside a plan's draft, not on their own page.
 
+## Cases drafted by AI
+
+A tester can have cases drafted for accepted requirements (FR-PLAN-03; AI §3 F2; TASKS M3-08). Code: `api/apps/plans/drafting.py`, `web/src/features/plans/CaseDrafts.tsx`.
+
+| Call (under `/api/projects/{key}/plans/{id}/`) | Who | Does |
+| --- | --- | --- |
+| `GET case-drafts/` | Anyone | The drafted cases with the requirements each covers, the gaps list, how many were left out, job progress |
+| `POST case-drafts/` | Testers | `{requirements?: [numbers]}`. Without it, drafts for every accepted requirement no accepted case covers (up to 50) |
+| `PATCH case-drafts/{case}/` | Testers | Edit a draft; it stays a draft |
+| `POST case-drafts/{case}/review/` | Testers | `{decision: accepted or rejected, reason?, viewed_ms?}` |
+| `POST case-drafts/accept/` | Testers | Accept up to 20 at once |
+
+- **A drafted case is in no plan version.** It is a real case with one revision in `review_state = draft`, and nothing points at it. Runs, coverage, stale checks and readiness all read a version's cases, so a draft counts nowhere and its case page answers "not found".
+- **Accepting adds it to the plan's draft**, last in the order, opening a draft if the plan has none. From there it is submitted and approved like any other change.
+- **Rejecting** keeps the case and its number for quality review. Its requirement can be drafted for again.
+- Drafting again skips a requirement that still has an undecided draft on this plan.
+- The review screen at `/{project}/plans/{n}/drafts` uses the same keys as requirement review (`A`, `R`, `Enter`, `J`, `K`), with the requirement the case covers shown beside it.
+
 ## Limits today
+
+- The plan page starts drafting for every uncovered requirement at once; choosing requirements one by one is in the API but has no screen yet.
 
 - Approval is recorded on the plan page; there is no notification to leads when a draft is submitted.
 - Two people editing the same draft at once overwrite each other case by case: the last save wins.

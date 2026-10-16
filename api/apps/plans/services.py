@@ -147,28 +147,48 @@ def add_case(
         requirements,
     )
     with transaction.atomic():
-        case = TestCase.objects.create(
-            org_id=plan.org_id,
-            project_id=plan.project_id,
-            display_no=next_number(plan.project_id, plan.org_id, CounterKind.TEST_CASE),
-            created_by=actor,
-        )
-        revision = CaseRevision.objects.create(
-            org_id=plan.org_id,
-            test_case=case,
-            rev_no=1,
-            review_state=review_state,
-            origin=origin,
-            created_by=actor,
-            **values,
-        )
-        _link(revision, requirements)
-        position = PlanVersionCase.objects.filter(plan_version=draft).count() + 1
-        PlanVersionCase.objects.create(
-            org_id=plan.org_id, plan_version=draft, case_revision=revision, position=position
-        )
-        _changed(draft)
+        revision = _new_case(plan, actor, values, requirements, review_state, origin)
+        _append(draft, revision)
     return revision
+
+
+def _new_case(
+    plan: TestPlan,
+    actor,
+    values: dict,
+    requirements: list[Requirement],
+    review_state: str,
+    origin: str,
+    case_type: str = "",
+) -> CaseRevision:
+    """A new test case and its first revision. No plan version points at it yet."""
+    case = TestCase.objects.create(
+        org_id=plan.org_id,
+        project_id=plan.project_id,
+        display_no=next_number(plan.project_id, plan.org_id, CounterKind.TEST_CASE),
+        created_by=actor,
+    )
+    revision = CaseRevision.objects.create(
+        org_id=plan.org_id,
+        test_case=case,
+        rev_no=1,
+        review_state=review_state,
+        origin=origin,
+        case_type=case_type,
+        created_by=actor,
+        **values,
+    )
+    _link(revision, requirements)
+    return revision
+
+
+def _append(draft: PlanVersion, revision: CaseRevision) -> None:
+    """Put the revision last in the draft."""
+    position = PlanVersionCase.objects.filter(plan_version=draft).count() + 1
+    PlanVersionCase.objects.create(
+        org_id=draft.org_id, plan_version=draft, case_revision=revision, position=position
+    )
+    _changed(draft)
 
 
 def _pointer(draft: PlanVersion, case: TestCase) -> PlanVersionCase:

@@ -68,10 +68,10 @@ There are 37 tables: 35 listed here in seven groups, the requirement-to-case lin
 
 | Table | Key fields | Rules |
 | --- | --- | --- |
-| test\_plan | project\_id, display\_no, title, scope, current\_version\_id | One plan per release or feature area |
+| test\_plan | project\_id, display\_no, title, scope, current\_version\_id, draft\_job\_id | One plan per release or feature area `draft_job_id` is the newest AI case-drafting job, for progress |
 | plan\_version | plan\_id, number (e.g. 1.0, 1.1), state (enum: draft, published, superseded), approved\_by, approved\_at, submitted\_by, submitted\_at | Only one draft per plan at a time; published rows never change. The submitted pair marks a draft handed to a lead, and any later edit clears it |
 | test\_case | project\_id, display\_no, retired\_at | Identity only; content lives in revisions |
-| case\_revision | test\_case\_id, rev\_no, title, preconditions, steps (json list), expected, priority, review\_state, origin | Immutable once its plan version is published |
+| case\_revision | test\_case\_id, rev\_no, title, preconditions, steps (json list), expected, priority, review\_state, origin, case\_type (enum: positive, negative, edge, accessibility; empty if unclassified) | Immutable once its plan version is published A revision in `review_state` draft that no plan version points at is an AI draft waiting for review |
 | plan\_version\_case | plan\_version\_id, case\_revision\_id, position | Which revisions make up a version |
 
 **Execution**

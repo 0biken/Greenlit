@@ -298,7 +298,7 @@ def seed_kola(project: Project, lead, tester, dev) -> str | None:
         text="A receipt shows the amount in the account's currency.",
         priority=Priority.MEDIUM,
     )
-    create_requirement(
+    idle = create_requirement(
         project,
         lead,
         title="Session ends after 5 minutes idle",
@@ -356,6 +356,11 @@ def seed_kola(project: Project, lead, tester, dev) -> str | None:
     runs.record_result(first, tester, "passed")
     _seed_plan_history(project, lead, tester)
     _seed_source(project, tester)
+    # Cases for the one requirement nothing covers are drafted by AI and left for review, so the
+    # case review screen has something to show (M3-08). The job runs when the seed commits.
+    from apps.plans import drafting
+
+    drafting.queue_case_drafting(version.plan, tester, [idle])
     return token
 
 

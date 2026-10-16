@@ -194,6 +194,9 @@ SPECTACULAR_SETTINGS = {
         "SeverityEnum": "apps.core.choices.Priority",
         "ReleaseStateEnum": "apps.runs.models.ReleaseState",
         "RunStateEnum": "apps.runs.models.RunState",
+        "CaseTypeEnum": "apps.plans.models.CaseType",
+        "ReviewDecisionEnum": "apps.ai.models.Decision",
+        "RejectReasonEnum": "apps.ai.models.RejectReason",
     },
 }
 
@@ -306,6 +309,10 @@ FILE_LINK_TTL_SECONDS = 15 * 60
 # network call, until a provider is chosen (D-008). Credit size and the default allowance are
 # stand-ins until real costs are measured (AI §8).
 AI_PROVIDER = env("AI_PROVIDER", default="apps.ai.providers.StubProvider")
+# Set AI_PROVIDER=apps.ai.providers.GeminiProvider and GEMINI_API_KEY in api/.env to use Gemini.
+GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
+GEMINI_MODEL = env("GEMINI_MODEL", default="gemini-flash-latest")
+AI_REQUEST_TIMEOUT_SECONDS = env.int("AI_REQUEST_TIMEOUT_SECONDS", default=60)
 AI_TOKENS_PER_CREDIT = env.int("AI_TOKENS_PER_CREDIT", default=1000)
 AI_DEFAULT_ALLOWANCE = env.int("AI_DEFAULT_ALLOWANCE", default=2000)  # credits a month
 AI_RETRY_WAITS = (2, 4, 8)  # seconds between tries when the provider cannot be reached

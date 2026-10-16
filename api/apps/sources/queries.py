@@ -5,32 +5,14 @@ from django.db.models import Count
 from apps.ai import drafts, usage
 from apps.ai.models import AiCall, AiDraft, AiDroppedItem
 from apps.core.choices import ReviewState
-from apps.core.models import CounterKind, Job, JobState, Membership, Project, display_name
+from apps.core.jobs import describe
+from apps.core.models import CounterKind, Job, Membership, Project, display_name
 from apps.core.numbering import format_display_id
 from apps.core.policy import Action, can
 from apps.files.models import FileState
 from apps.inbox.services import LEADS
 from apps.requirements.models import Requirement
 from apps.sources.models import SourceDocument, SourceExtraction, SourceState
-
-RUNNING = (JobState.QUEUED, JobState.RUNNING, JobState.FAILED)  # failed: waiting to be retried
-
-
-def _job(document: SourceDocument, jobs: dict) -> dict | None:
-    job = jobs.get(document.job_id)
-    if job is None:
-        return None
-    return {
-        "id": job.pk,
-        "kind": job.kind,
-        "state": job.state,
-        "running": job.state in RUNNING,
-        "progress": (job.progress or {}).get("label", ""),
-        "done": (job.progress or {}).get("done", 0),
-        "total": (job.progress or {}).get("total", 0),
-        # Only a message written for people: a job that gave up, never a retried error's class.
-        "error": job.error if job.state == JobState.DEAD else "",
-    }
 
 
 def _state(document: SourceDocument) -> tuple[str, str]:
@@ -65,7 +47,7 @@ def _row(document: SourceDocument, counts: dict, jobs: dict) -> dict:
         "drafts": counts.get((document.pk, ReviewState.DRAFT), 0),
         "accepted": counts.get((document.pk, ReviewState.ACCEPTED), 0),
         "rejected": counts.get((document.pk, ReviewState.REJECTED), 0),
-        "job": _job(document, jobs),
+        "job": describe(jobs.get(document.job_id)),
     }
 
 

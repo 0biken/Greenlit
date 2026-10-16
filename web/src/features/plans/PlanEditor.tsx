@@ -149,7 +149,7 @@ export function PlanEditor() {
   )
 }
 
-type CaseBody = {
+export type CaseBody = {
   title: string
   preconditions: string
   steps: string[]
@@ -158,11 +158,12 @@ type CaseBody = {
   requirements: number[]
 }
 
-function CaseForm({
+export function CaseForm({
   projectKey,
   item,
   busy,
   error,
+  saveLabel,
   onSave,
   onRemove,
   onCancel,
@@ -171,6 +172,8 @@ function CaseForm({
   item: PlanCase | null
   busy: boolean
   error: string | null
+  /** The save button's words, where "Save case" would mislead. */
+  saveLabel?: string
   onSave: (body: CaseBody) => void
   onRemove?: () => void
   onCancel: () => void
@@ -308,7 +311,7 @@ function CaseForm({
           Cancel
         </Button>
         <Button type="submit" variant="primary" disabled={busy}>
-          {busy ? 'Saving…' : item ? 'Save case' : 'Add case'}
+          {busy ? 'Saving…' : (saveLabel ?? (item ? 'Save case' : 'Add case'))}
         </Button>
       </div>
     </form>

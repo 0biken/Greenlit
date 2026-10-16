@@ -28,6 +28,8 @@ The caller then runs the checks, because only it knows its own records.
 | The quote is in the stored text word for word (only whitespace may differ) | The item is dropped |
 | An image region lies inside the image | The item is dropped (used from F3 on) |
 | Title up to 120 characters, up to 20 steps | The item is dropped and counted, never cut |
+| A drafted case cites only requirements it was given, and at least one | The item is dropped |
+| No empty steps | The item is dropped |
 | Nearly the same as an existing record | Kept, marked as a possible duplicate |
 
 Dropped items are stored in `ai_dropped_item` with the reason, for quality review. The person sees a count: "12 drafts created. 3 were left out because their source could not be confirmed."
@@ -59,5 +61,7 @@ Logs and error reports from this layer carry IDs, hashes, outcomes and counts. D
 ## Limits today
 
 - **No real provider (D-008).** `AI_PROVIDER` defaults to `apps.ai.providers.StubProvider`, which drafts requirements by rule from the document's own sentences (those with must, can, should, will and similar). It makes the whole flow real, but it is not a model: it does not split compound statements or judge importance well.
+- **Gemini is available** as `apps.ai.providers.GeminiProvider`. Set `AI_PROVIDER` to that path and `GEMINI_API_KEY` (and optionally `GEMINI_MODEL`, default `gemini-flash-latest`) in `api/.env`. Tests mock the HTTP call; it has not been scored on the Phase 0 test set, so D-008 stays open.
 - **No quality scores yet.** The eval runner (M2-10) and the 30-document injection pack (M2-11) need a real provider and the Phase 0 test set. Today six hostile documents test the checks layer only.
-- Only F1 (requirements from a PRD) is built. F2 to F5 are later tasks.
+- F1 (requirements from a PRD) and F2 (cases from requirements, docs/plans.md) are built. F3 to F5 are later tasks.
+- For F2 the stub writes one positive and one negative case per requirement, with placeholders. They show the flow; they are not good test cases.

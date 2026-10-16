@@ -277,13 +277,22 @@ def seed_spine(org, project, lead, tester, upload, label: str = "Sample"):
         reason="quote_not_found",
         item={"title": f"{label} invented requirement"},
     )
+    # The published case, taken before any drafts exist, then cases drafted for the plan by
+    # the stub provider and left waiting for review.
+    from apps.plans import drafting
+
+    case = plans.TestCase.objects.get(project=project)
+    job = drafting.queue_case_drafting(plan, lead, [requirement])
+    drafting.draft_cases(job, str(plan.pk), [str(requirement.pk)])
+    case_draft = plans.TestCase.objects.filter(project=project).exclude(pk=case.pk).first()
     return {
         "source": source,
         "share_link": share_link,
         "share_token": share_token,
         "requirement": requirement,
         "plan": plan,
-        "case": plans.TestCase.objects.get(project=project),
+        "case": case,
+        "case_draft": case_draft,
         "release": release,
         "run": run,
         "result": result,

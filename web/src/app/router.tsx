@@ -7,6 +7,7 @@ import { NewDefectPage } from '../features/defects/NewDefectPage'
 import { InboxPage } from '../features/inbox/InboxPage'
 import { AcceptInvite, Welcome } from '../features/orgs/OrgPages'
 import { NotFound } from '../features/NotFound'
+import { CaseDrafts } from '../features/plans/CaseDrafts'
 import { CasePage } from '../features/plans/CasePage'
 import { PlanDiff } from '../features/plans/PlanDiff'
 import { PlanEditor } from '../features/plans/PlanEditor'
@@ -68,6 +69,7 @@ export const router = createBrowserRouter([
       { path: ':projectKey/plans/:no', element: <PlanPage /> },
       { path: ':projectKey/plans/:no/edit', element: <PlanEditor /> },
       { path: ':projectKey/plans/:no/diff', element: <PlanDiff /> },
+      { path: ':projectKey/plans/:no/drafts', element: <CaseDrafts /> },
       { path: ':projectKey/cases/:no', element: <CasePage /> },
       { path: ':projectKey/releases', element: <ReleasesList /> },
       { path: ':projectKey/releases/:version', element: <ReleasePage /> },

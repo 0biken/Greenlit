@@ -49,6 +49,7 @@ def plan_list(project: Project) -> list[dict]:
         [p.current_version_id for p in plans if p.current_version_id]
         + [d.pk for d in drafts.values()]
     )
+    waiting = waiting_drafts(plans)
     rows = []
     for p in plans:
         draft = drafts.get(p.pk)
@@ -62,6 +63,7 @@ def plan_list(project: Project) -> list[dict]:
                 "cases": counts.get(shown, 0),
                 "has_draft": draft is not None,
                 "draft_submitted": bool(draft and draft.submitted_at),
+                "case_drafts": waiting.get(str(p.pk), 0),
             }
         )
     return rows
@@ -82,6 +84,7 @@ def plan_detail(plan: TestPlan, membership: Membership) -> dict:
         "number": plan.display_no,
         "title": plan.title,
         "scope": plan.scope,
+        "case_drafts": waiting_drafts([plan]).get(str(plan.pk), 0),
         "version": plan.current_version.number if plan.current_version else None,
         "versions": [
             {
@@ -222,4 +225,97 @@ def case_detail(case: TestCase) -> dict:
             }
             for r in results
         ],
+    }
+
+
+def waiting_drafts(plans: list[TestPlan]) -> dict:
+    """{plan id: how many AI-drafted cases wait for review}"""
+    from apps.ai.models import AiDraft
+
+    counts: dict = {}
+    rows = AiDraft.objects.filter(
+        target_type="case_revision", decision="", flags__plan__in=[str(p.pk) for p in plans]
+    )
+    for plan_id in rows.values_list("flags__plan", flat=True):
+        counts[plan_id] = counts.get(plan_id, 0) + 1
+    return counts
+
+
+def case_drafts(plan: TestPlan, membership: Membership) -> dict:
+    """Everything the case review screen shows for one plan: the drafts with the requirements
+    each covers, what the AI could not answer, and the progress of a drafting job."""
+    from apps.ai import usage
+    from apps.ai.models import AiCall, AiDraft, AiDroppedItem
+    from apps.core.jobs import describe
+    from apps.core.models import Job
+    from apps.inbox.services import LEADS
+
+    notes = {
+        n.target_id: n
+        for n in AiDraft.objects.filter(target_type="case_revision", flags__plan=str(plan.pk))
+    }
+    revisions = list(
+        CaseRevision.objects.filter(pk__in=notes)
+        .select_related("test_case")
+        .order_by("test_case__display_no")
+    )
+    links: dict = {r.pk: [] for r in revisions}
+    for link in (
+        CaseRequirement.objects.filter(case_revision__in=revisions)
+        .select_related("requirement")
+        .order_by("requirement__display_no")
+    ):
+        links[link.case_revision_id].append(
+            {
+                "display_id": format_display_id(
+                    CounterKind.REQUIREMENT, link.requirement.display_no
+                ),
+                "number": link.requirement.display_no,
+                "title": link.requirement.title,
+                "text": link.requirement.text,
+            }
+        )
+    calls = AiCall.objects.filter(source_id=plan.pk, feature="draft_cases")
+    gaps: list[str] = []
+    for found in calls.order_by("created_at").values_list("gaps", flat=True):
+        gaps += [g for g in found if g not in gaps]
+    try:
+        usage.ensure_allowance(plan.org_id)
+        allowance_message = ""
+    except usage.AllowanceUsedUp as error:
+        allowance_message = error.message
+    states = [r.review_state for r in revisions]
+    role = membership.role
+    return {
+        "plan": plan_id(plan),
+        "plan_no": plan.display_no,
+        "title": plan.title,
+        "drafts": states.count(ReviewState.DRAFT),
+        "accepted": states.count(ReviewState.ACCEPTED),
+        "rejected": states.count(ReviewState.REJECTED),
+        "items": [
+            {
+                "case": case_id(r.test_case),
+                "number": r.test_case.display_no,
+                "title": r.title,
+                "case_type": r.case_type,
+                "priority": r.priority,
+                "preconditions": r.preconditions,
+                "steps": r.steps,
+                "expected": r.expected,
+                "review_state": r.review_state,
+                "requirements": links[r.pk],
+                "assumptions": notes[r.pk].flags.get("assumptions", []),
+                "possible_duplicate_of": notes[r.pk].flags.get("possible_duplicate_of"),
+            }
+            for r in revisions
+        ],
+        "gaps": gaps,
+        "left_out": AiDroppedItem.objects.filter(call__in=calls).count(),
+        "job": describe(Job.objects.filter(pk=plan.draft_job_id).first()),
+        "allowance_message": allowance_message,
+        "fast_accepts": (
+            sum(1 for n in notes.values() if n.fast_accept) if role in LEADS else None
+        ),
+        "actions": {"review": can(role, Action.WRITE_TESTING)},
     }

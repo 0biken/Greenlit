@@ -171,3 +171,25 @@ def for_each_org(kind: str, **args) -> int:
             enqueue(kind, org_id=org_id, **args)
         count += 1
     return count
+
+
+# A failed job is waiting to be tried again, so to a person it is still running.
+IN_HAND = (JobState.QUEUED, JobState.RUNNING, JobState.FAILED)
+
+
+def describe(job: Job | None) -> dict | None:
+    """What a screen shows about a job it is waiting on. `error` is only ever a message written
+    for people (`JobFailure`), from a job that gave up; never a retried error's class name."""
+    if job is None:
+        return None
+    progress = job.progress or {}
+    return {
+        "id": job.pk,
+        "kind": job.kind,
+        "state": job.state,
+        "running": job.state in IN_HAND,
+        "progress": progress.get("label", ""),
+        "done": progress.get("done", 0),
+        "total": progress.get("total", 0),
+        "error": job.error if job.state == JobState.DEAD else "",
+    }

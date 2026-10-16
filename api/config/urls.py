@@ -116,6 +116,26 @@ urlpatterns = [
     ),
     path("api/projects/<str:key>/plans/<str:plan_id>/diff/", plan_views.diff, name="plan-diff"),
     path(
+        "api/projects/<str:key>/plans/<str:plan_id>/case-drafts/",
+        plan_views.case_drafts,
+        name="plan-case-drafts",
+    ),
+    path(
+        "api/projects/<str:key>/plans/<str:plan_id>/case-drafts/accept/",
+        plan_views.case_drafts_accept,
+        name="plan-case-drafts-accept",
+    ),
+    path(
+        "api/projects/<str:key>/plans/<str:plan_id>/case-drafts/<str:case_id>/",
+        plan_views.case_draft,
+        name="plan-case-draft",
+    ),
+    path(
+        "api/projects/<str:key>/plans/<str:plan_id>/case-drafts/<str:case_id>/review/",
+        plan_views.case_draft_review,
+        name="plan-case-draft-review",
+    ),
+    path(
         "api/projects/<str:key>/plans/<str:plan_id>/versions/<str:version>/",
         plan_views.version_detail,
         name="plan-version",
