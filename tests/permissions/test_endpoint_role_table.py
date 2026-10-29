@@ -29,7 +29,7 @@ from apps.defects.status import create_defect, set_tracker_status
 from apps.requirements.models import RequirementRevision
 from apps.requirements.services import create_requirement
 from apps.runs.services import create_release
-from django.db import connection
+from django.db import DatabaseError, connection
 from django.test import Client
 from django.utils import timezone
 
@@ -381,6 +381,26 @@ def test_source_linked_requirement_review_and_edit_preserve_provenance():
     assert str(revisions[0]["source_document_id"]) == source["id"]
     assert revisions[0]["source_locator"] == requirement["source_locator"]
     assert revisions[1]["text"] == edit_response.json()["text"]
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "UPDATE requirements_requirementrevision SET title = title WHERE requirement_id = %s",
+        "DELETE FROM requirements_requirementrevision WHERE requirement_id = %s",
+    ],
+    ids=["update", "delete"],
+)
+def test_requirement_revision_snapshots_cannot_be_changed_or_deleted(statement):
+    org, _, ctx = _org_with_a_member_of_each_role()
+    requirement_id = ctx["params"]["requirement_id"]()
+
+    with (
+        pytest.raises(DatabaseError, match="requirement revisions are immutable"),
+        org_scope(org.id),
+        connection.cursor() as cursor,
+    ):
+        cursor.execute(statement, [requirement_id])
 
 
 def test_requirement_rejects_a_quote_not_present_in_its_source():
