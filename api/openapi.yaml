@@ -114,6 +114,73 @@ paths:
               schema:
                 $ref: '#/components/schemas/Health'
           description: ''
+  /api/inbox/:
+    get:
+      operationId: inbox_retrieve
+      description: Everything that needs you across your projects, grouped by urgency
+        (FR-INB-01).
+      parameters:
+      - in: query
+        name: snoozed
+        schema:
+          type: boolean
+        description: Show only snoozed items
+      tags:
+      - inbox
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inbox'
+          description: ''
+  /api/inbox/{item_id}/snooze/:
+    post:
+      operationId: inbox_snooze_create
+      description: Hide an item from your Inbox until a date, with a reason (FR-INB-04).
+      parameters:
+      - in: path
+        name: item_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - inbox
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Snooze'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Snooze'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Snooze'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/inbox/{item_id}/unsnooze/:
+    post:
+      operationId: inbox_unsnooze_create
+      parameters:
+      - in: path
+        name: item_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - inbox
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/invites/:
     get:
       operationId: invites_list
@@ -539,6 +606,72 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProjectDetail'
           description: ''
+  /api/projects/{key}/defects/{defect_id}/fixed/:
+    post:
+      operationId: projects_defects_fixed_create
+      description: Set the defect to Fixed (FR-DEF-02). It moves to Needs retest.
+      parameters:
+      - in: path
+        name: defect_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefectState'
+          description: ''
+  /api/projects/{key}/defects/{defect_id}/retests/:
+    post:
+      operationId: projects_defects_retests_create
+      description: |-
+        Record a retest with evidence (FR-DEF-03). Passed: Verified. Failed: Retest failed,
+        and the tracker status goes back to Open.
+      parameters:
+      - in: path
+        name: defect_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Retest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Retest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Retest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefectState'
+          description: ''
   /api/projects/{key}/files/:
     post:
       operationId: projects_files_create
@@ -659,6 +792,93 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/projects/{key}/releases/{version}/:
+    get:
+      operationId: projects_releases_retrieve
+      description: Readiness with blockers by type, verified coverage, the report
+        and any sign-off.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: version
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseDetail'
+          description: ''
+  /api/projects/{key}/releases/{version}/sign-off/:
+    post:
+      operationId: projects_releases_sign_off_create
+      description: Sign off the release (M8-06). Not ready yet needs a written reason,
+        kept on the record.
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: version
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignOffRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SignOffRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SignOffRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseDetail'
+          description: ''
+  /api/projects/{key}/summary/:
+    get:
+      operationId: projects_summary_retrieve
+      description: 'The project dashboard: next release, verified coverage, open work,
+        recent activity.'
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectSummary'
+          description: ''
   /api/sessions/end-all/:
     post:
       operationId: sessions_end_all_create
@@ -681,6 +901,83 @@ components:
           maxLength: 200
       required:
       - token
+    Activity:
+      type: object
+      properties:
+        at:
+          type: string
+          format: date-time
+        actor:
+          type: string
+        text:
+          type: string
+        refs:
+          type: array
+          items:
+            type: string
+      required:
+      - actor
+      - at
+      - refs
+      - text
+    Blocker:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/TypeEnum'
+        display_id:
+          type: string
+        title:
+          type: string
+        age_days:
+          type: integer
+        owner_name:
+          type: string
+          nullable: true
+      required:
+      - age_days
+      - display_id
+      - owner_name
+      - title
+      - type
+    Counts:
+      type: object
+      properties:
+        requirements:
+          type: integer
+        cases:
+          type: integer
+        runs:
+          type: integer
+        open_defects:
+          type: integer
+      required:
+      - cases
+      - open_defects
+      - requirements
+      - runs
+    Coverage:
+      type: object
+      properties:
+        verified_pct:
+          type: integer
+        verified:
+          type: integer
+        on_hold:
+          type: integer
+        failed:
+          type: integer
+        not_run:
+          type: integer
+        total_requirements:
+          type: integer
+      required:
+      - failed
+      - not_run
+      - on_hold
+      - total_requirements
+      - verified
+      - verified_pct
     Csrf:
       type: object
       properties:
@@ -705,6 +1002,22 @@ components:
       - name
       - role
       - slug
+    DefectState:
+      type: object
+      properties:
+        display_id:
+          type: string
+        tracker_status:
+          type: string
+        qa_status:
+          type: string
+        shown_as:
+          type: string
+      required:
+      - display_id
+      - qa_status
+      - shown_as
+      - tracker_status
     Download:
       type: object
       properties:
@@ -763,6 +1076,24 @@ components:
             type: string
       required:
       - enabled
+    GroupEnum:
+      enum:
+      - closed_failed_retest
+      - needs_retest
+      - aging_defects
+      - unfiled_failures
+      - missing_evidence
+      - stale_tests
+      - uncovered
+      type: string
+      description: |-
+        * `closed_failed_retest` - closed_failed_retest
+        * `needs_retest` - needs_retest
+        * `aging_defects` - aging_defects
+        * `unfiled_failures` - unfiled_failures
+        * `missing_evidence` - missing_evidence
+        * `stale_tests` - stale_tests
+        * `uncovered` - uncovered
     Health:
       type: object
       properties:
@@ -770,6 +1101,102 @@ components:
           type: string
       required:
       - status
+    Inbox:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InboxItem'
+        counts:
+          $ref: '#/components/schemas/InboxCounts'
+        snoozed:
+          type: integer
+        next_release:
+          allOf:
+          - $ref: '#/components/schemas/NextRelease'
+          nullable: true
+      required:
+      - counts
+      - items
+      - next_release
+      - snoozed
+    InboxCounts:
+      type: object
+      properties:
+        closed_failed_retest:
+          type: integer
+        needs_retest:
+          type: integer
+        aging_defects:
+          type: integer
+        unfiled_failures:
+          type: integer
+        missing_evidence:
+          type: integer
+        stale_tests:
+          type: integer
+        uncovered:
+          type: integer
+      required:
+      - aging_defects
+      - closed_failed_retest
+      - missing_evidence
+      - needs_retest
+      - stale_tests
+      - uncovered
+      - unfiled_failures
+    InboxItem:
+      type: object
+      properties:
+        id:
+          type: string
+        group:
+          $ref: '#/components/schemas/GroupEnum'
+        critical:
+          type: boolean
+        status:
+          type: string
+        display_id:
+          type: string
+        title:
+          type: string
+        project_key:
+          type: string
+        project_name:
+          type: string
+        age_days:
+          type: integer
+        since:
+          type: string
+          format: date-time
+        next_action:
+          $ref: '#/components/schemas/NextActionEnum'
+        owner_name:
+          type: string
+          nullable: true
+        snoozed_until:
+          type: string
+          format: date-time
+          nullable: true
+        snooze_reason:
+          type: string
+          nullable: true
+      required:
+      - age_days
+      - critical
+      - display_id
+      - group
+      - id
+      - next_action
+      - owner_name
+      - project_key
+      - project_name
+      - since
+      - snooze_reason
+      - snoozed_until
+      - status
+      - title
     Invitation:
       type: object
       properties:
@@ -840,18 +1267,6 @@ components:
       - progress
       - started_at
       - state
-    KindEnum:
-      enum:
-      - evidence
-      - prd
-      - qa_report
-      - screenshot
-      type: string
-      description: |-
-        * `evidence` - evidence
-        * `prd` - prd
-        * `qa_report` - qa_report
-        * `screenshot` - screenshot
     Me:
       type: object
       properties:
@@ -912,6 +1327,66 @@ components:
       - organisation
       - role
       - status
+    NextActionEnum:
+      enum:
+      - retest
+      - run
+      - add_case
+      - open
+      - file_defect
+      - attach_evidence
+      type: string
+      description: |-
+        * `retest` - retest
+        * `run` - run
+        * `add_case` - add_case
+        * `open` - open
+        * `file_defect` - file_defect
+        * `attach_evidence` - attach_evidence
+    NextRelease:
+      type: object
+      properties:
+        project_key:
+          type: string
+        version:
+          type: string
+        due:
+          type: string
+          format: date
+      required:
+      - due
+      - project_key
+      - version
+    OpenWork:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/OpenWorkKindEnum'
+        count:
+          type: integer
+        oldest_days:
+          type: integer
+          nullable: true
+      required:
+      - count
+      - kind
+      - oldest_days
+    OpenWorkKindEnum:
+      enum:
+      - needs_retest
+      - retest_failed
+      - stale
+      - uncovered
+      - missing_evidence
+      - unfiled_failures
+      type: string
+      description: |-
+        * `needs_retest` - needs_retest
+        * `retest_failed` - retest_failed
+        * `stale` - stale
+        * `uncovered` - uncovered
+        * `missing_evidence` - missing_evidence
+        * `unfiled_failures` - unfiled_failures
     OrganisationCreate:
       type: object
       properties:
@@ -951,6 +1426,14 @@ components:
       - id
       - name
       - slug
+    OutcomeEnum:
+      enum:
+      - passed
+      - failed
+      type: string
+      description: |-
+        * `passed` - Passed
+        * `failed` - Failed
     PatchedProjectUpdate:
       type: object
       properties:
@@ -1050,6 +1533,176 @@ components:
           format: uuid
       required:
       - user_id
+    ProjectSummary:
+      type: object
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        client_name:
+          type: string
+        is_new:
+          type: boolean
+        release:
+          allOf:
+          - $ref: '#/components/schemas/ReleaseBrief'
+          nullable: true
+        coverage:
+          allOf:
+          - $ref: '#/components/schemas/Coverage'
+          nullable: true
+        open_work:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpenWork'
+        activity:
+          type: array
+          items:
+            $ref: '#/components/schemas/Activity'
+        counts:
+          $ref: '#/components/schemas/Counts'
+      required:
+      - activity
+      - client_name
+      - counts
+      - coverage
+      - is_new
+      - key
+      - name
+      - open_work
+      - release
+    ReadinessEnum:
+      enum:
+      - ready
+      - not_ready
+      type: string
+      description: |-
+        * `ready` - ready
+        * `not_ready` - not_ready
+    ReleaseBrief:
+      type: object
+      properties:
+        version:
+          type: string
+        name:
+          type: string
+        due:
+          type: string
+          format: date
+          nullable: true
+        readiness:
+          $ref: '#/components/schemas/ReadinessEnum'
+        blockers:
+          type: integer
+      required:
+      - blockers
+      - due
+      - name
+      - readiness
+      - version
+    ReleaseDetail:
+      type: object
+      properties:
+        project_key:
+          type: string
+        version:
+          type: string
+        name:
+          type: string
+        due:
+          type: string
+          format: date
+          nullable: true
+        readiness:
+          $ref: '#/components/schemas/ReadinessEnum'
+        blockers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Blocker'
+        coverage:
+          $ref: '#/components/schemas/Coverage'
+        report:
+          $ref: '#/components/schemas/Report'
+        sign_off:
+          allOf:
+          - $ref: '#/components/schemas/SignOff'
+          nullable: true
+      required:
+      - blockers
+      - coverage
+      - due
+      - name
+      - project_key
+      - readiness
+      - report
+      - sign_off
+      - version
+    Report:
+      type: object
+      properties:
+        display_id:
+          type: string
+          nullable: true
+        state:
+          $ref: '#/components/schemas/StateEnum'
+        summary:
+          type: string
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportSection'
+      required:
+      - display_id
+      - sections
+      - state
+      - summary
+    ReportLine:
+      type: object
+      properties:
+        text:
+          type: string
+        refs:
+          type: array
+          items:
+            type: string
+      required:
+      - refs
+      - text
+    ReportSection:
+      type: object
+      properties:
+        heading:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportLine'
+      required:
+      - heading
+      - lines
+    Retest:
+      type: object
+      properties:
+        outcome:
+          $ref: '#/components/schemas/OutcomeEnum'
+        evidence_file_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 20
+        build:
+          type: string
+          default: ''
+          maxLength: 100
+        environment:
+          type: string
+          default: ''
+          maxLength: 100
+      required:
+      - evidence_file_ids
+      - outcome
     RoleEnum:
       enum:
       - owner
@@ -1066,11 +1719,70 @@ components:
         * `qa_engineer` - Qa Engineer
         * `developer` - Developer
         * `viewer` - Viewer
+    SignOff:
+      type: object
+      properties:
+        by:
+          type: string
+        at:
+          type: string
+          format: date-time
+        readiness:
+          $ref: '#/components/schemas/ReadinessEnum'
+        reason:
+          type: string
+          nullable: true
+      required:
+      - at
+      - by
+      - readiness
+      - reason
+    SignOffRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          nullable: true
+          maxLength: 2000
+    Snooze:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+        until:
+          type: string
+          format: date-time
+      required:
+      - reason
+      - until
+    StateEnum:
+      enum:
+      - draft
+      - signed
+      type: string
+      description: |-
+        * `draft` - draft
+        * `signed` - signed
+    TypeEnum:
+      enum:
+      - needs_retest
+      - open_critical
+      - closed_failed_retest
+      - uncovered_critical
+      - unfiled_failure
+      type: string
+      description: |-
+        * `needs_retest` - needs_retest
+        * `open_critical` - open_critical
+        * `closed_failed_retest` - closed_failed_retest
+        * `uncovered_critical` - uncovered_critical
+        * `unfiled_failure` - unfiled_failure
     UploadRequest:
       type: object
       properties:
         kind:
-          $ref: '#/components/schemas/KindEnum'
+          $ref: '#/components/schemas/UploadRequestKindEnum'
         name:
           type: string
           maxLength: 255
@@ -1081,6 +1793,18 @@ components:
       - kind
       - name
       - size
+    UploadRequestKindEnum:
+      enum:
+      - evidence
+      - prd
+      - qa_report
+      - screenshot
+      type: string
+      description: |-
+        * `evidence` - evidence
+        * `prd` - prd
+        * `qa_report` - qa_report
+        * `screenshot` - screenshot
     UploadStarted:
       type: object
       properties:

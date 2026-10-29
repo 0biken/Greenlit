@@ -105,6 +105,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/inbox/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Everything that needs you across your projects, grouped by urgency (FR-INB-01). */
+        get: operations["inbox_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/inbox/{item_id}/snooze/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Hide an item from your Inbox until a date, with a reason (FR-INB-04). */
+        post: operations["inbox_snooze_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/inbox/{item_id}/unsnooze/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["inbox_unsnooze_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/invites/": {
         parameters: {
             query?: never;
@@ -330,6 +380,43 @@ export interface paths {
         patch: operations["projects_partial_update"];
         trace?: never;
     };
+    "/api/projects/{key}/defects/{defect_id}/fixed/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Set the defect to Fixed (FR-DEF-02). It moves to Needs retest. */
+        post: operations["projects_defects_fixed_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/defects/{defect_id}/retests/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Record a retest with evidence (FR-DEF-03). Passed: Verified. Failed: Retest failed,
+         *     and the tracker status goes back to Open.
+         */
+        post: operations["projects_defects_retests_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/{key}/files/": {
         parameters: {
             query?: never;
@@ -382,6 +469,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{key}/releases/{version}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Readiness with blockers by type, verified coverage, the report and any sign-off. */
+        get: operations["projects_releases_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/releases/{version}/sign-off/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Sign off the release (M8-06). Not ready yet needs a written reason, kept on the record. */
+        post: operations["projects_releases_sign_off_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/summary/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The project dashboard: next release, verified coverage, open work, recent activity. */
+        get: operations["projects_summary_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/sessions/end-all/": {
         parameters: {
             query?: never;
@@ -406,6 +544,34 @@ export interface components {
         AcceptInvite: {
             token: string;
         };
+        Activity: {
+            /** Format: date-time */
+            at: string;
+            actor: string;
+            text: string;
+            refs: string[];
+        };
+        Blocker: {
+            type: components["schemas"]["TypeEnum"];
+            display_id: string;
+            title: string;
+            age_days: number;
+            owner_name: string | null;
+        };
+        Counts: {
+            requirements: number;
+            cases: number;
+            runs: number;
+            open_defects: number;
+        };
+        Coverage: {
+            verified_pct: number;
+            verified: number;
+            on_hold: number;
+            failed: number;
+            not_run: number;
+            total_requirements: number;
+        };
         Csrf: {
             csrfToken: string;
         };
@@ -415,6 +581,12 @@ export interface components {
             slug: string;
             name: string;
             role: string;
+        };
+        DefectState: {
+            display_id: string;
+            tracker_status: string;
+            qa_status: string;
+            shown_as: string;
         };
         Download: {
             url: string;
@@ -439,8 +611,52 @@ export interface components {
         Flags: {
             enabled: string[];
         };
+        /**
+         * @description * `closed_failed_retest` - closed_failed_retest
+         *     * `needs_retest` - needs_retest
+         *     * `aging_defects` - aging_defects
+         *     * `unfiled_failures` - unfiled_failures
+         *     * `missing_evidence` - missing_evidence
+         *     * `stale_tests` - stale_tests
+         *     * `uncovered` - uncovered
+         * @enum {string}
+         */
+        GroupEnum: "closed_failed_retest" | "needs_retest" | "aging_defects" | "unfiled_failures" | "missing_evidence" | "stale_tests" | "uncovered";
         Health: {
             status: string;
+        };
+        Inbox: {
+            items: components["schemas"]["InboxItem"][];
+            counts: components["schemas"]["InboxCounts"];
+            snoozed: number;
+            next_release: components["schemas"]["NextRelease"] | null;
+        };
+        InboxCounts: {
+            closed_failed_retest: number;
+            needs_retest: number;
+            aging_defects: number;
+            unfiled_failures: number;
+            missing_evidence: number;
+            stale_tests: number;
+            uncovered: number;
+        };
+        InboxItem: {
+            id: string;
+            group: components["schemas"]["GroupEnum"];
+            critical: boolean;
+            status: string;
+            display_id: string;
+            title: string;
+            project_key: string;
+            project_name: string;
+            age_days: number;
+            /** Format: date-time */
+            since: string;
+            next_action: components["schemas"]["NextActionEnum"];
+            owner_name: string | null;
+            /** Format: date-time */
+            snoozed_until: string | null;
+            snooze_reason: string | null;
         };
         Invitation: {
             /** Format: uuid */
@@ -473,14 +689,6 @@ export interface components {
             /** Format: date-time */
             finished_at: string | null;
         };
-        /**
-         * @description * `evidence` - evidence
-         *     * `prd` - prd
-         *     * `qa_report` - qa_report
-         *     * `screenshot` - screenshot
-         * @enum {string}
-         */
-        KindEnum: "evidence" | "prd" | "qa_report" | "screenshot";
         Me: {
             /** Format: uuid */
             id: string;
@@ -505,6 +713,37 @@ export interface components {
             status: string;
             needs_mfa: boolean;
         };
+        /**
+         * @description * `retest` - retest
+         *     * `run` - run
+         *     * `add_case` - add_case
+         *     * `open` - open
+         *     * `file_defect` - file_defect
+         *     * `attach_evidence` - attach_evidence
+         * @enum {string}
+         */
+        NextActionEnum: "retest" | "run" | "add_case" | "open" | "file_defect" | "attach_evidence";
+        NextRelease: {
+            project_key: string;
+            version: string;
+            /** Format: date */
+            due: string;
+        };
+        OpenWork: {
+            kind: components["schemas"]["OpenWorkKindEnum"];
+            count: number;
+            oldest_days: number | null;
+        };
+        /**
+         * @description * `needs_retest` - needs_retest
+         *     * `retest_failed` - retest_failed
+         *     * `stale` - stale
+         *     * `uncovered` - uncovered
+         *     * `missing_evidence` - missing_evidence
+         *     * `unfiled_failures` - unfiled_failures
+         * @enum {string}
+         */
+        OpenWorkKindEnum: "needs_retest" | "retest_failed" | "stale" | "uncovered" | "missing_evidence" | "unfiled_failures";
         OrganisationCreate: {
             name: string;
             slug?: string;
@@ -521,6 +760,12 @@ export interface components {
             slug: string;
             name: string;
         };
+        /**
+         * @description * `passed` - Passed
+         *     * `failed` - Failed
+         * @enum {string}
+         */
+        OutcomeEnum: "passed" | "failed";
         PatchedProjectUpdate: {
             name?: string;
             client_name?: string;
@@ -565,6 +810,65 @@ export interface components {
             /** Format: uuid */
             user_id: string;
         };
+        ProjectSummary: {
+            key: string;
+            name: string;
+            client_name: string;
+            is_new: boolean;
+            release: components["schemas"]["ReleaseBrief"] | null;
+            coverage: components["schemas"]["Coverage"] | null;
+            open_work: components["schemas"]["OpenWork"][];
+            activity: components["schemas"]["Activity"][];
+            counts: components["schemas"]["Counts"];
+        };
+        /**
+         * @description * `ready` - ready
+         *     * `not_ready` - not_ready
+         * @enum {string}
+         */
+        ReadinessEnum: "ready" | "not_ready";
+        ReleaseBrief: {
+            version: string;
+            name: string;
+            /** Format: date */
+            due: string | null;
+            readiness: components["schemas"]["ReadinessEnum"];
+            blockers: number;
+        };
+        ReleaseDetail: {
+            project_key: string;
+            version: string;
+            name: string;
+            /** Format: date */
+            due: string | null;
+            readiness: components["schemas"]["ReadinessEnum"];
+            blockers: components["schemas"]["Blocker"][];
+            coverage: components["schemas"]["Coverage"];
+            report: components["schemas"]["Report"];
+            sign_off: components["schemas"]["SignOff"] | null;
+        };
+        Report: {
+            display_id: string | null;
+            state: components["schemas"]["StateEnum"];
+            summary: string;
+            sections: components["schemas"]["ReportSection"][];
+        };
+        ReportLine: {
+            text: string;
+            refs: string[];
+        };
+        ReportSection: {
+            heading: string;
+            lines: components["schemas"]["ReportLine"][];
+        };
+        Retest: {
+            outcome: components["schemas"]["OutcomeEnum"];
+            evidence_file_ids: string[];
+            /** @default  */
+            build: string;
+            /** @default  */
+            environment: string;
+        };
         /**
          * @description * `owner` - Owner
          *     * `admin` - Admin
@@ -575,11 +879,49 @@ export interface components {
          * @enum {string}
          */
         RoleEnum: "owner" | "admin" | "qa_lead" | "qa_engineer" | "developer" | "viewer";
+        SignOff: {
+            by: string;
+            /** Format: date-time */
+            at: string;
+            readiness: components["schemas"]["ReadinessEnum"];
+            reason: string | null;
+        };
+        SignOffRequest: {
+            reason?: string | null;
+        };
+        Snooze: {
+            reason: string;
+            /** Format: date-time */
+            until: string;
+        };
+        /**
+         * @description * `draft` - draft
+         *     * `signed` - signed
+         * @enum {string}
+         */
+        StateEnum: "draft" | "signed";
+        /**
+         * @description * `needs_retest` - needs_retest
+         *     * `open_critical` - open_critical
+         *     * `closed_failed_retest` - closed_failed_retest
+         *     * `uncovered_critical` - uncovered_critical
+         *     * `unfiled_failure` - unfiled_failure
+         * @enum {string}
+         */
+        TypeEnum: "needs_retest" | "open_critical" | "closed_failed_retest" | "uncovered_critical" | "unfiled_failure";
         UploadRequest: {
-            kind: components["schemas"]["KindEnum"];
+            kind: components["schemas"]["UploadRequestKindEnum"];
             name: string;
             size: number;
         };
+        /**
+         * @description * `evidence` - evidence
+         *     * `prd` - prd
+         *     * `qa_report` - qa_report
+         *     * `screenshot` - screenshot
+         * @enum {string}
+         */
+        UploadRequestKindEnum: "evidence" | "prd" | "qa_report" | "screenshot";
         UploadStarted: {
             file: components["schemas"]["File"];
             upload: components["schemas"]["UploadTarget"];
@@ -729,6 +1071,74 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Health"];
                 };
+            };
+        };
+    };
+    inbox_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Show only snoozed items */
+                snoozed?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Inbox"];
+                };
+            };
+        };
+    };
+    inbox_snooze_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Snooze"];
+                "application/x-www-form-urlencoded": components["schemas"]["Snooze"];
+                "multipart/form-data": components["schemas"]["Snooze"];
+            };
+        };
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    inbox_unsnooze_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1159,6 +1569,56 @@ export interface operations {
             };
         };
     };
+    projects_defects_fixed_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                defect_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectState"];
+                };
+            };
+        };
+    };
+    projects_defects_retests_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                defect_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Retest"];
+                "application/x-www-form-urlencoded": components["schemas"]["Retest"];
+                "multipart/form-data": components["schemas"]["Retest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectState"];
+                };
+            };
+        };
+    };
     projects_files_create: {
         parameters: {
             query?: never;
@@ -1266,6 +1726,77 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    projects_releases_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseDetail"];
+                };
+            };
+        };
+    };
+    projects_releases_sign_off_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SignOffRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SignOffRequest"];
+                "multipart/form-data": components["schemas"]["SignOffRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseDetail"];
+                };
+            };
+        };
+    };
+    projects_summary_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectSummary"];
+                };
             };
         };
     };
