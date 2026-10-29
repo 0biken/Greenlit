@@ -32,6 +32,32 @@ class Requirement(TenantModel):
         ]
 
 
+class RequirementRevision(TenantModel):
+    """Append-only snapshot of a requirement's authored content and source provenance."""
+
+    requirement = models.ForeignKey(Requirement, on_delete=models.PROTECT, related_name="revisions")
+    revision = models.PositiveIntegerField()
+    title = models.CharField(max_length=200)
+    text = models.TextField()
+    priority = models.CharField(max_length=10, choices=Priority.choices)
+    source_document = models.ForeignKey(
+        "requirements.SourceDocument",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="requirement_revisions",
+    )
+    source_locator = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["requirement", "revision"], name="requirement_revision_unique"
+            )
+        ]
+        ordering = ["requirement_id", "revision"]
+
+
 class SourceDocument(TenantModel):
     """Pasted PRD or Markdown source. File uploads and extraction are a later M2 slice."""
 

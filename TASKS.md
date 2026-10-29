@@ -51,7 +51,7 @@ These things are referenced by behaviour in the specs but have no table or field
 - [ ] **G-04** `job` table: kind, state, progress (json), error, attempts, org\_id. Needed for progress polling and the failed-job list (ARCH §5, §6; M1-17).
 - [ ] **G-05** `ai_call` metering table: feature, model, tokens in and out, cost\_usd, duration\_ms, input\_hash (AI §8; M2-04). Plus `ai_dropped_item` for dropped and rejected drafts kept for quality review (AI §2).
 - [ ] **G-06** Reject reason on drafts (wrong, duplicate, too vague, not testable) and an accepted-in-under-2-seconds flag (AI §6, §9).
-- [ ] **G-07** Requirement revision history. AI §5 says the old passage stays linked to the old revision, but `requirement` keeps only an int `revision`. Decide: a `requirement_revision` table, or before/after text in `audit_event`.
+- [~] **G-07** `RequirementRevision` stores immutable content and source-provenance snapshots; database migration and automated checks remain to be verified.
 - [x] **G-08** (closed: `project.settings`, see the data model spec and apps/core/project_settings.py) Project settings: stale window (30 days), retest escalation (48h, 96h), aging limits per severity, fixer-cannot-verify on/off. Store as a `project.settings` json or a table.
 - [ ] **G-09** Merge semantics for FR-IMP-02 "merge with an existing defect": which fields win, where the evidence goes, what the audit log records.
 

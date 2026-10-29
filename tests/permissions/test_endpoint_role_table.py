@@ -26,6 +26,7 @@ from apps.core.models import (
 from apps.core.policy import can
 from apps.core.tenancy import org_scope
 from apps.defects.status import create_defect, set_tracker_status
+from apps.requirements.models import RequirementRevision
 from apps.requirements.services import create_requirement
 from apps.runs.services import create_release
 from django.db import connection
@@ -369,6 +370,17 @@ def test_source_linked_requirement_review_and_edit_preserve_provenance():
     assert edit_response.json()["revision"] == 2
     assert edit_response.json()["source_document_id"] == source["id"]
     assert edit_response.json()["source_locator"] == requirement["source_locator"]
+    with org_scope(org.id):
+        revisions = list(
+            RequirementRevision.objects.filter(requirement_id=requirement["id"])
+            .order_by("revision")
+            .values("revision", "text", "source_document_id", "source_locator")
+        )
+    assert [row["revision"] for row in revisions] == [1, 2]
+    assert revisions[0]["text"] == requirement["text"]
+    assert str(revisions[0]["source_document_id"]) == source["id"]
+    assert revisions[0]["source_locator"] == requirement["source_locator"]
+    assert revisions[1]["text"] == edit_response.json()["text"]
 
 
 def test_requirement_rejects_a_quote_not_present_in_its_source():

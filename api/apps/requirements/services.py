@@ -6,7 +6,21 @@ from apps.core import audit
 from apps.core.choices import Origin, Priority, ReviewState
 from apps.core.models import CounterKind, Project
 from apps.core.numbering import next_number
-from apps.requirements.models import Requirement, SourceDocument
+from apps.requirements.models import Requirement, RequirementRevision, SourceDocument
+
+
+def _record_revision(requirement: Requirement, actor) -> None:
+    RequirementRevision.objects.create(
+        org_id=requirement.org_id,
+        requirement=requirement,
+        revision=requirement.revision,
+        title=requirement.title,
+        text=requirement.text,
+        priority=requirement.priority,
+        source_document=requirement.source_document,
+        source_locator=requirement.source_locator,
+        created_by=actor,
+    )
 
 
 def create_requirement(
@@ -35,6 +49,7 @@ def create_requirement(
             source_locator=source_locator or {},
             created_by=actor,
         )
+        _record_revision(requirement, actor)
         audit.record(
             "requirement.created",
             "requirement",
@@ -58,6 +73,7 @@ def change_text(requirement: Requirement, actor, text: str) -> Requirement:
         requirement.text = text
         requirement.revision = before + 1
         requirement.save(update_fields=["text", "revision", "updated_at"])
+        _record_revision(requirement, actor)
         audit.record(
             "requirement.text_changed",
             "requirement",
@@ -77,19 +93,18 @@ def update_requirement(
     text: str,
     priority: str,
 ) -> Requirement:
-    """Edit a manual requirement; text changes increment revision for stale-case tracking."""
+    """Edit a manual requirement; content changes create a revision for stale-case tracking."""
     before = {
         "priority": requirement.priority,
         "revision": requirement.revision,
-        "title_changed": False,
-        "text_changed": False,
     }
     title_changed = title != requirement.title
     text_changed = text != requirement.text
+    content_changed = title_changed or text_changed or before["priority"] != priority
     fields = ["title", "priority"]
     requirement.title = title
     requirement.priority = priority
-    if text_changed:
+    if content_changed:
         requirement.text = text
         requirement.revision += 1
         fields.extend(["text", "revision"])
@@ -97,6 +112,7 @@ def update_requirement(
         return requirement
     with transaction.atomic():
         requirement.save(update_fields=[*fields, "updated_at"])
+        _record_revision(requirement, actor)
         audit.record(
             "requirement.updated",
             "requirement",
@@ -105,8 +121,8 @@ def update_requirement(
             before={
                 "priority": before["priority"],
                 "revision": before["revision"],
-                "title_changed": False,
-                "text_changed": False,
+                "title_changed": title_changed,
+                "text_changed": text_changed,
             },
             after={
                 "priority": requirement.priority,
