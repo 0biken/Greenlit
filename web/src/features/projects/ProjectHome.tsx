@@ -60,6 +60,7 @@ export function ProjectHome() {
           </p>
           <h1 className="page-title">{s.name}</h1>
           {s.client_name ? <p className="page-sub">For {s.client_name}</p> : null}
+          <Link className="btn btn-secondary btn-sm project-requirements-link" to={`/${s.key.toLowerCase()}/requirements`}>Requirements</Link>
         </div>
       </header>
 

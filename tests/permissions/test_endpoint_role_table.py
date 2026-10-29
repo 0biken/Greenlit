@@ -11,10 +11,6 @@ import uuid
 from datetime import timedelta
 
 import pytest
-from django.db import connection
-from django.test import Client
-from django.utils import timezone
-
 from apps.core.models import (
     Invitation,
     Job,
@@ -28,10 +24,14 @@ from apps.core.models import (
     User,
 )
 from apps.core.policy import can
+from apps.core.tenancy import org_scope
 from apps.defects.status import create_defect, set_tracker_status
 from apps.requirements.services import create_requirement
 from apps.runs.services import create_release
-from apps.core.tenancy import org_scope
+from django.db import connection
+from django.test import Client
+from django.utils import timezone
+
 from tests.support import HANDLED, api_endpoints, declared, stored_file, url_for
 
 pytestmark = pytest.mark.django_db
@@ -54,26 +54,52 @@ SAMPLES = {
         "email": f"invitee{next(_counter)}@example.com",
         "role": "viewer",
     },
-    ("api/projects/", "post"): lambda ctx: {"name": "Sample", "key": _letters(next(_counter))},
+    ("api/projects/", "post"): lambda ctx: {
+        "name": "Sample",
+        "key": _letters(next(_counter)),
+    },
     ("api/jobs/<uuid:job_id>/rerun/", "post"): lambda ctx: {},
     ("api/projects/<str:key>/files/", "post"): lambda ctx: {
         "kind": "evidence",
         "name": "shot.png",
         "size": 100,
     },
+    ("api/projects/<str:key>/sources/", "post"): lambda ctx: {
+        "title": "Sample PRD",
+        "kind": "prd",
+        "content_text": "The user can pay by card.",
+    },
+    ("api/projects/<str:key>/requirements/", "post"): lambda ctx: {
+        "title": "Card payment",
+        "text": "The user can pay by card.",
+        "priority": "medium",
+    },
+    ("api/requirements/<uuid:requirement_id>/", "patch"): lambda ctx: {
+        "title": "Updated card payment",
+        "text": "The user can pay by card.",
+        "priority": "high",
+    },
+    ("api/requirements/<uuid:requirement_id>/", "delete"): lambda ctx: {},
+    ("api/requirements/<uuid:requirement_id>/review/", "post"): lambda ctx: {
+        "review_state": "accepted",
+    },
     ("api/files/<uuid:file_id>/complete/", "post"): lambda ctx: {},
     ("api/members/<uuid:user_id>/", "patch"): lambda ctx: {"role": "developer"},
     ("api/members/<uuid:user_id>/", "delete"): lambda ctx: {},
     ("api/invites/<uuid:invite_id>/", "delete"): lambda ctx: {},
     ("api/projects/<str:key>/", "patch"): lambda ctx: {"client_name": "Client X"},
-    ("api/projects/<str:key>/members/", "post"): lambda ctx: {"user_id": ctx["fresh_member"]()},
+    ("api/projects/<str:key>/members/", "post"): lambda ctx: {
+        "user_id": ctx["fresh_member"]()
+    },
     ("api/projects/<str:key>/members/<uuid:user_id>/", "delete"): lambda ctx: {},
     ("api/inbox/<str:item_id>/snooze/", "post"): lambda ctx: {
         "reason": "Waiting for staging",
         "until": (timezone.now() + timedelta(days=2)).isoformat(),
     },
     ("api/inbox/<str:item_id>/unsnooze/", "post"): lambda ctx: {},
-    ("api/projects/<str:key>/releases/<str:version>/sign-off/", "post"): lambda ctx: {"reason": ""},
+    ("api/projects/<str:key>/releases/<str:version>/sign-off/", "post"): lambda ctx: {
+        "reason": ""
+    },
     ("api/projects/<str:key>/defects/<str:defect_id>/fixed/", "post"): lambda ctx: {},
     ("api/projects/<str:key>/defects/<str:defect_id>/retests/", "post"): lambda ctx: {
         "outcome": "passed",
@@ -133,10 +159,15 @@ def _org_with_a_member_of_each_role():
         job = Job.objects.create(org_id=org.id, kind="sample", state=JobState.DEAD)
         # An available file, so downloading it and completing it (a no-op) are valid requests.
         upload = stored_file(org, project, "evidence.png")
-        requirement = create_requirement(project, None, title="Pay by card", text="Card payments.")
+        requirement = create_requirement(
+            project, None, title="Pay by card", text="Card payments."
+        )
         fixer = User.objects.create_user("fixer@table.example", "x" * 14)
         Membership.objects.create(
-            org_id=org.id, user=fixer, role=Role.DEVELOPER, status=MembershipStatus.ACTIVE
+            org_id=org.id,
+            user=fixer,
+            role=Role.DEVELOPER,
+            status=MembershipStatus.ACTIVE,
         )
 
     def fresh_release() -> str:
@@ -155,9 +186,14 @@ def _org_with_a_member_of_each_role():
     def fresh_member() -> str:
         """A viewer on the sample project, for calls that change or remove someone."""
         with org_scope(org.id):
-            user = User.objects.create_user(f"target{next(_counter)}@table.example", "x" * 14)
+            user = User.objects.create_user(
+                f"target{next(_counter)}@table.example", "x" * 14
+            )
             Membership.objects.create(
-                org_id=org.id, user=user, role=Role.VIEWER, status=MembershipStatus.ACTIVE
+                org_id=org.id,
+                user=user,
+                role=Role.VIEWER,
+                status=MembershipStatus.ACTIVE,
             )
             ProjectMember.objects.create(org_id=org.id, project=project, user=user)
         return str(user.id)
@@ -174,6 +210,17 @@ def _org_with_a_member_of_each_role():
             )
         return str(invitation.id)
 
+    def fresh_requirement() -> str:
+        with org_scope(org.id):
+            return str(
+                create_requirement(
+                    project,
+                    users[Role.QA_LEAD.value],
+                    title=f"Requirement {next(_counter)}",
+                    text="The user can pay by card.",
+                ).pk
+            )
+
     ctx = {
         "fresh_member": fresh_member,
         "file_id": str(upload.id),
@@ -185,6 +232,7 @@ def _org_with_a_member_of_each_role():
             "version": fresh_release,
             "defect_id": fresh_fixed_defect,
             "item_id": f"requirement.{requirement.pk}",
+            "requirement_id": fresh_requirement,
         },
     }
     return org, users, ctx
@@ -202,14 +250,18 @@ def test_the_table_is_not_empty():
 
 @pytest.mark.parametrize("route,view_cls", list(api_endpoints()), ids=lambda v: str(v))
 def test_every_endpoint_declares_a_policy(route, view_cls):
-    assert view_cls is not None, f"{route}: not a DRF view; add a policy and a row to this table"
+    assert view_cls is not None, (
+        f"{route}: not a DRF view; add a policy and a row to this table"
+    )
     assert declared(view_cls) is not None, (
         f"{route} declares no policy. Use requires(Action.X), AuthenticatedOnly or Public "
         "from apps.core.policy."
     )
 
 
-@pytest.mark.parametrize("route,view_cls,method,action", list(role_gated_calls()), ids=str)
+@pytest.mark.parametrize(
+    "route,view_cls,method,action", list(role_gated_calls()), ids=str
+)
 def test_each_role_gets_the_matrix_answer(route, view_cls, method, action):
     org, users, ctx = _org_with_a_member_of_each_role()
     _as_app_role()
@@ -227,8 +279,12 @@ def test_each_role_gets_the_matrix_answer(route, view_cls, method, action):
             )
 
 
-@pytest.mark.parametrize("route,view_cls,method,action", list(role_gated_calls()), ids=str)
-def test_without_an_organisation_or_membership_it_is_not_found(route, view_cls, method, action):
+@pytest.mark.parametrize(
+    "route,view_cls,method,action", list(role_gated_calls()), ids=str
+)
+def test_without_an_organisation_or_membership_it_is_not_found(
+    route, view_cls, method, action
+):
     org, _, ctx = _org_with_a_member_of_each_role()
     outsider = User.objects.create_user("outsider@table.example", "x" * 14)
     _as_app_role()
@@ -244,4 +300,100 @@ def test_anonymous_callers_only_reach_public_endpoints(route, view_cls):
     if declared(view_cls) == "public":
         assert response.status_code == 200
     else:
-        assert response.status_code in (401, 403), f"{route} answered {response.status_code}"
+        assert response.status_code in (401, 403), (
+            f"{route} answered {response.status_code}"
+        )
+
+
+def test_source_linked_requirement_review_and_edit_preserve_provenance():
+    org, users, _ = _org_with_a_member_of_each_role()
+    engineer = users[Role.QA_ENGINEER.value]
+    _as_app_role()
+    client = Client()
+    client.force_login(engineer)
+    headers = {"X-Org": org.slug}
+
+    source_response = client.post(
+        "/api/projects/SAMPLE/sources/",
+        data={
+            "title": "Checkout PRD",
+            "kind": "prd",
+            "content_text": "Customers can pay with a card after reviewing an order.",
+        },
+        content_type="application/json",
+        headers=headers,
+    )
+    assert source_response.status_code == 201, source_response.content
+    source = source_response.json()
+
+    requirement_response = client.post(
+        "/api/projects/SAMPLE/requirements/",
+        data={
+            "title": "Card payment",
+            "text": "Customers can pay with a card.",
+            "priority": "high",
+            "review_state": "draft",
+            "source_document_id": source["id"],
+            "source_locator": {
+                "quote": "Customers can pay with a card after reviewing an order."
+            },
+        },
+        content_type="application/json",
+        headers=headers,
+    )
+    assert requirement_response.status_code == 201, requirement_response.content
+    requirement = requirement_response.json()
+    assert requirement["source_document_id"] == source["id"]
+    assert requirement["source_locator"]["quote"] in source["content_text"]
+
+    review_response = client.post(
+        f"/api/requirements/{requirement['id']}/review/",
+        data={"review_state": "accepted"},
+        content_type="application/json",
+        headers=headers,
+    )
+    assert review_response.status_code == 200, review_response.content
+    assert review_response.json()["review_state"] == "accepted"
+
+    edit_response = client.patch(
+        f"/api/requirements/{requirement['id']}/",
+        data={
+            "title": "Card payment after order review",
+            "text": "Customers can pay with a card after they review their order.",
+            "priority": "high",
+        },
+        content_type="application/json",
+        headers=headers,
+    )
+    assert edit_response.status_code == 200, edit_response.content
+    assert edit_response.json()["revision"] == 2
+    assert edit_response.json()["source_document_id"] == source["id"]
+    assert edit_response.json()["source_locator"] == requirement["source_locator"]
+
+
+def test_requirement_rejects_a_quote_not_present_in_its_source():
+    org, users, _ = _org_with_a_member_of_each_role()
+    _as_app_role()
+    client = Client()
+    client.force_login(users[Role.QA_ENGINEER.value])
+    headers = {"X-Org": org.slug}
+    source = client.post(
+        "/api/projects/SAMPLE/sources/",
+        data={"title": "Checkout PRD", "content_text": "The user can pay by card."},
+        content_type="application/json",
+        headers=headers,
+    ).json()
+    response = client.post(
+        "/api/projects/SAMPLE/requirements/",
+        data={
+            "title": "Card payment",
+            "text": "The user can pay by card.",
+            "priority": "medium",
+            "source_document_id": source["id"],
+            "source_locator": {"quote": "The user can pay by cash."},
+        },
+        content_type="application/json",
+        headers=headers,
+    )
+    assert response.status_code == 400
+    assert "source_locator" in response.json()

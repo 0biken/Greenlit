@@ -5,13 +5,16 @@ from apps.core.models import Project, TenantModel
 
 
 class Requirement(TenantModel):
-    """One requirement (DATA §3). `revision` goes up when `text` changes, which makes the
-    cases written against the old text Stale (`case_requirement.req_revision_seen`).
-
-    `source_document_id` arrives with source documents (M2-01).
-    """
+    """One requirement, optionally traced to the exact source passage (DATA §3)."""
 
     project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name="+")
+    source_document = models.ForeignKey(
+        "requirements.SourceDocument",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="requirements",
+    )
     display_no = models.PositiveIntegerField()
     title = models.CharField(max_length=200)
     text = models.TextField()
@@ -27,3 +30,21 @@ class Requirement(TenantModel):
         constraints = [
             models.UniqueConstraint(fields=["project", "display_no"], name="requirement_no_unique")
         ]
+
+
+class SourceDocument(TenantModel):
+    """Pasted PRD or Markdown source. File uploads and extraction are a later M2 slice."""
+
+    class Kind(models.TextChoices):
+        PRD = "prd", "PRD"
+        SCREENSHOT_SET = "screenshot_set", "Screenshot set"
+        QA_REPORT = "qa_report", "QA report"
+
+    project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name="sources")
+    kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.PRD)
+    title = models.CharField(max_length=200)
+    content_text = models.TextField()
+    page_count = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["org_id", "project"])]

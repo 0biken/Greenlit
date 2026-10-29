@@ -9,9 +9,6 @@ When search, file routes and exports exist, add them to the discovery here.
 """
 
 import pytest
-from django.db import connection
-from django.test import Client
-
 from apps.core import services
 from apps.core.models import (
     CounterKind,
@@ -26,6 +23,9 @@ from apps.core.models import (
 )
 from apps.core.numbering import next_number
 from apps.core.tenancy import org_scope, set_scope
+from django.db import connection
+from django.test import Client
+
 from tests.support import (
     api_endpoints,
     declared,
@@ -51,21 +51,33 @@ def world():
     for tag, display in (("alpha", "Alpha"), ("bravo", "BRAVO-CONFIDENTIAL")):
         domain = "bravo-secret.example" if tag == "bravo" else "alpha-iso.example"
         owner = User.objects.create_user(
-            f"owner@{domain}", "x" * 14, name="Bravo Spy" if tag == "bravo" else "Alpha Owner"
+            f"owner@{domain}",
+            "x" * 14,
+            name="Bravo Spy" if tag == "bravo" else "Alpha Owner",
         )
-        engineer = User.objects.create_user(f"engineer@{domain}", "x" * 14, name=f"{tag} engineer")
+        engineer = User.objects.create_user(
+            f"engineer@{domain}", "x" * 14, name=f"{tag} engineer"
+        )
         org = services.create_organisation(owner, f"{display} Org", f"{tag}-iso")
         with org_scope(org.id, owner.pk):
             Membership.objects.create(
-                org_id=org.id, user=engineer, role=Role.QA_ENGINEER, status=MembershipStatus.ACTIVE
+                org_id=org.id,
+                user=engineer,
+                role=Role.QA_ENGINEER,
+                status=MembershipStatus.ACTIVE,
             )
             owner_membership = Membership.objects.get(user=owner)
             shared = services.create_project(
-                owner_membership, f"{display} shared project", "SHARED", member_ids=[engineer.pk]
+                owner_membership,
+                f"{display} shared project",
+                "SHARED",
+                member_ids=[engineer.pk],
             )
             private_key = "SECRTB" if tag == "bravo" else "ALPHAP"
             services.create_project(owner_membership, f"{display} private", private_key)
-            services.invite_member(owner_membership, org, f"invitee@{domain}", Role.VIEWER.value)
+            services.invite_member(
+                owner_membership, org, f"invitee@{domain}", Role.VIEWER.value
+            )
             next_number(shared.pk, org.pk, CounterKind.DEFECT)
             assert ProjectMember.objects.filter(user=engineer).exists()
             job = Job.objects.create(org_id=org.id, kind="sample", state=JobState.DEAD)
@@ -114,11 +126,12 @@ def test_every_tenant_table_has_sample_data_for_both_organisations(world):
     empty = []
     for table in tenant_tables():
         for org in (world.alpha, world.bravo):
-            with org_scope(org.id):
-                with connection.cursor() as cursor:
-                    cursor.execute(f'SELECT count(*) FROM "{table}" WHERE org_id = %s', [org.id])
-                    if cursor.fetchone()[0] == 0:
-                        empty.append(f"{table} has no rows for {org.slug}")
+            with org_scope(org.id), connection.cursor() as cursor:
+                cursor.execute(
+                    f'SELECT count(*) FROM "{table}" WHERE org_id = %s', [org.id]
+                )
+                if cursor.fetchone()[0] == 0:
+                    empty.append(f"{table} has no rows for {org.slug}")
     assert empty == [], "Seed these tables in the `world` fixture: " + "; ".join(empty)
 
 
@@ -128,11 +141,15 @@ def test_the_database_hides_bravos_rows_from_alpha_in_every_tenant_table(world):
     leaks = []
     for table in tenant_tables():
         with connection.cursor() as cursor:
-            cursor.execute(f'SELECT count(*) FROM "{table}" WHERE org_id <> %s', [world.alpha.id])
+            cursor.execute(
+                f'SELECT count(*) FROM "{table}" WHERE org_id <> %s', [world.alpha.id]
+            )
             if cursor.fetchone()[0]:
                 leaks.append(table)
             cursor.execute(f'SELECT count(*) FROM "{table}"')
-            assert cursor.fetchone()[0] > 0, f"{table} shows Alpha nothing: the check is vacuous"
+            assert cursor.fetchone()[0] > 0, (
+                f"{table} shows Alpha nothing: the check is vacuous"
+            )
     assert leaks == []
 
 
@@ -203,15 +220,20 @@ def test_no_alpha_response_contains_any_of_bravos_data(world):
                         "version": "1.0",
                         "defect_id": str(world.alpha_spine["defect"].pk),
                         "item_id": f"requirement.{world.alpha_spine['requirement'].pk}",
+                        "requirement_id": str(world.alpha_spine["requirement"].pk),
                     },
                 ),
                 headers={"X-Org": "alpha-iso"},
             )
             text = response.content.decode(errors="replace")
             for marker in BRAVO_MARKERS:
-                assert marker not in text, f"GET {route} as {user.email} leaked {marker!r}"
+                assert marker not in text, (
+                    f"GET {route} as {user.email} leaked {marker!r}"
+                )
             seen_ok += response.status_code == 200
-    assert seen_ok >= 8, "too few successful calls: the leak scan is not looking at real data"
+    assert seen_ok >= 8, (
+        "too few successful calls: the leak scan is not looking at real data"
+    )
 
 
 def test_bravos_identifiers_are_not_found_under_alpha(world):
@@ -231,11 +253,14 @@ def test_bravos_identifiers_are_not_found_under_alpha(world):
                         "version": "1.0",
                         "defect_id": str(world.bravo_spine["defect"].pk),
                         "item_id": f"requirement.{world.bravo_spine['requirement'].pk}",
+                        "requirement_id": str(world.bravo_spine["requirement"].pk),
                     },
                 ),
                 headers={"X-Org": "alpha-iso"},
             )
-            assert response.status_code == 404, f"GET {route} with Bravo's key as {user.email}"
+            assert response.status_code == 404, (
+                f"GET {route} with Bravo's key as {user.email}"
+            )
 
 
 def test_the_same_project_key_in_two_organisations_resolves_to_your_own(world):
@@ -254,12 +279,19 @@ def test_a_bravo_user_cannot_read_alpha_data_either(world):
     """The isolation is symmetric."""
     as_app_role()
     client = client_for(world.bravo_owner)
-    assert client.get("/api/projects/alphap/", headers={"X-Org": "alpha-iso"}).status_code == 404
-    assert client.get("/api/members/", headers={"X-Org": "alpha-iso"}).status_code == 404
+    assert (
+        client.get("/api/projects/alphap/", headers={"X-Org": "alpha-iso"}).status_code
+        == 404
+    )
+    assert (
+        client.get("/api/members/", headers={"X-Org": "alpha-iso"}).status_code == 404
+    )
 
 
 def test_every_endpoint_has_a_declared_policy_so_it_is_part_of_this_suite(world):
-    undeclared = [route for route, cls in api_endpoints() if cls is None or declared(cls) is None]
+    undeclared = [
+        route for route, cls in api_endpoints() if cls is None or declared(cls) is None
+    ]
     assert undeclared == []
 
 
@@ -269,7 +301,9 @@ def test_alphas_organisation_record_is_the_only_one_visible(world):
     assert list(Organisation.objects.values_list("slug", flat=True)) == ["alpha-iso"]
 
 
-def test_alpha_cannot_change_or_remove_bravos_people_invitations_or_project_members(world):
+def test_alpha_cannot_change_or_remove_bravos_people_invitations_or_project_members(
+    world,
+):
     """The write routes for managing an organisation, called by Alpha's owner with Bravo's IDs."""
     from apps.core.models import Invitation, ProjectMember
 
@@ -290,7 +324,10 @@ def test_alpha_cannot_change_or_remove_bravos_people_invitations_or_project_memb
         kwargs: dict = {"headers": headers}
         if body is not None:
             kwargs.update(data=body, content_type="application/json")
-        assert getattr(client, method)(path, **kwargs).status_code == 404, (method, path)
+        assert getattr(client, method)(path, **kwargs).status_code == 404, (
+            method,
+            path,
+        )
 
     with org_scope(world.bravo.id):
         assert Membership.objects.get(user=world.bravo_engineer).role == "qa_engineer"

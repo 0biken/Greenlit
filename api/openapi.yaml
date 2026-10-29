@@ -857,6 +857,112 @@ paths:
               schema:
                 $ref: '#/components/schemas/ReleaseDetail'
           description: ''
+  /api/projects/{key}/requirements/:
+    get:
+      operationId: projects_requirements_list
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Requirement'
+          description: ''
+    post:
+      operationId: projects_requirements_create
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequirementCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RequirementCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RequirementCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Requirement'
+          description: ''
+  /api/projects/{key}/sources/:
+    get:
+      operationId: projects_sources_list
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Source'
+          description: ''
+    post:
+      operationId: projects_sources_create
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SourceCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SourceCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SourceCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Source'
+          description: ''
   /api/projects/{key}/summary/:
     get:
       operationId: projects_summary_retrieve
@@ -878,6 +984,107 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProjectSummary'
+          description: ''
+  /api/requirements/{requirement_id}/:
+    get:
+      operationId: requirements_retrieve
+      parameters:
+      - in: path
+        name: requirement_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - requirements
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Requirement'
+          description: ''
+    patch:
+      operationId: requirements_partial_update
+      parameters:
+      - in: path
+        name: requirement_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - requirements
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRequirementUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRequirementUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRequirementUpdate'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Requirement'
+          description: ''
+    delete:
+      operationId: requirements_destroy
+      parameters:
+      - in: path
+        name: requirement_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - requirements
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/requirements/{requirement_id}/review/:
+    post:
+      operationId: requirements_review_create
+      parameters:
+      - in: path
+        name: requirement_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - requirements
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Review'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Review'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Review'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Requirement'
           description: ''
   /api/sessions/end-all/:
     post:
@@ -1267,6 +1474,16 @@ components:
       - progress
       - started_at
       - state
+    Kind397Enum:
+      enum:
+      - prd
+      - screenshot_set
+      - qa_report
+      type: string
+      description: |-
+        * `prd` - PRD
+        * `screenshot_set` - Screenshot set
+        * `qa_report` - QA report
     Me:
       type: object
       properties:
@@ -1426,6 +1643,14 @@ components:
       - id
       - name
       - slug
+    OriginEnum:
+      enum:
+      - human
+      - ai
+      type: string
+      description: |-
+        * `human` - Human
+        * `ai` - Ai
     OutcomeEnum:
       enum:
       - passed
@@ -1446,11 +1671,33 @@ components:
         settings:
           type: object
           additionalProperties: {}
+    PatchedRequirementUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        text:
+          type: string
+        priority:
+          $ref: '#/components/schemas/PriorityEnum'
     PatchedRoleChange:
       type: object
       properties:
         role:
           $ref: '#/components/schemas/RoleEnum'
+    PriorityEnum:
+      enum:
+      - critical
+      - high
+      - medium
+      - low
+      type: string
+      description: |-
+        * `critical` - Critical
+        * `high` - High
+        * `medium` - Medium
+        * `low` - Low
     Project:
       type: object
       properties:
@@ -1681,6 +1928,88 @@ components:
       required:
       - heading
       - lines
+    Requirement:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        display_no:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        title:
+          type: string
+          maxLength: 200
+        text:
+          type: string
+        priority:
+          $ref: '#/components/schemas/PriorityEnum'
+        revision:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        source_document_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        source_locator: {}
+        review_state:
+          $ref: '#/components/schemas/RequirementReviewStateEnum'
+        origin:
+          $ref: '#/components/schemas/OriginEnum'
+        created_at:
+          type: string
+          format: date-time
+      required:
+      - display_no
+      - id
+      - source_document_id
+      - text
+      - title
+    RequirementCreate:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        text:
+          type: string
+        priority:
+          $ref: '#/components/schemas/PriorityEnum'
+        source_document_id:
+          type: string
+          format: uuid
+          nullable: true
+        source_locator: {}
+        review_state:
+          allOf:
+          - $ref: '#/components/schemas/RequirementCreateReviewStateEnum'
+          default: accepted
+      required:
+      - priority
+      - text
+      - title
+    RequirementCreateReviewStateEnum:
+      enum:
+      - draft
+      - accepted
+      type: string
+      description: |-
+        * `draft` - draft
+        * `accepted` - accepted
+    RequirementReviewStateEnum:
+      enum:
+      - draft
+      - accepted
+      - rejected
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `accepted` - Accepted
+        * `rejected` - Rejected
     Retest:
       type: object
       properties:
@@ -1703,6 +2032,23 @@ components:
       required:
       - evidence_file_ids
       - outcome
+    Review:
+      type: object
+      properties:
+        review_state:
+          $ref: '#/components/schemas/ReviewReviewStateEnum'
+      required:
+      - review_state
+    ReviewReviewStateEnum:
+      enum:
+      - accepted
+      - rejected
+      - draft
+      type: string
+      description: |-
+        * `accepted` - accepted
+        * `rejected` - rejected
+        * `draft` - draft
     RoleEnum:
       enum:
       - owner
@@ -1756,6 +2102,50 @@ components:
       required:
       - reason
       - until
+    Source:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/Kind397Enum'
+        title:
+          type: string
+          maxLength: 200
+        content_text:
+          type: string
+        page_count:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - content_text
+      - created_at
+      - id
+      - title
+    SourceCreate:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/Kind397Enum'
+          default: prd
+        content_text:
+          type: string
+          maxLength: 1000000
+      required:
+      - content_text
+      - title
     StateEnum:
       enum:
       - draft

@@ -503,6 +503,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{key}/requirements/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["projects_requirements_list"];
+        put?: never;
+        post: operations["projects_requirements_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{key}/sources/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["projects_sources_list"];
+        put?: never;
+        post: operations["projects_sources_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/{key}/summary/": {
         parameters: {
             query?: never;
@@ -514,6 +546,38 @@ export interface paths {
         get: operations["projects_summary_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirements/{requirement_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["requirements_retrieve"];
+        put?: never;
+        post?: never;
+        delete: operations["requirements_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["requirements_partial_update"];
+        trace?: never;
+    };
+    "/api/requirements/{requirement_id}/review/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["requirements_review_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -689,6 +753,13 @@ export interface components {
             /** Format: date-time */
             finished_at: string | null;
         };
+        /**
+         * @description * `prd` - PRD
+         *     * `screenshot_set` - Screenshot set
+         *     * `qa_report` - QA report
+         * @enum {string}
+         */
+        Kind397Enum: "prd" | "screenshot_set" | "qa_report";
         Me: {
             /** Format: uuid */
             id: string;
@@ -761,6 +832,12 @@ export interface components {
             name: string;
         };
         /**
+         * @description * `human` - Human
+         *     * `ai` - Ai
+         * @enum {string}
+         */
+        OriginEnum: "human" | "ai";
+        /**
          * @description * `passed` - Passed
          *     * `failed` - Failed
          * @enum {string}
@@ -773,9 +850,22 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        PatchedRequirementUpdate: {
+            title?: string;
+            text?: string;
+            priority?: components["schemas"]["PriorityEnum"];
+        };
         PatchedRoleChange: {
             role?: components["schemas"]["RoleEnum"];
         };
+        /**
+         * @description * `critical` - Critical
+         *     * `high` - High
+         *     * `medium` - Medium
+         *     * `low` - Low
+         * @enum {string}
+         */
+        PriorityEnum: "critical" | "high" | "medium" | "low";
         Project: {
             /** Format: uuid */
             id: string;
@@ -861,6 +951,45 @@ export interface components {
             heading: string;
             lines: components["schemas"]["ReportLine"][];
         };
+        Requirement: {
+            /** Format: uuid */
+            readonly id: string;
+            display_no: number;
+            title: string;
+            text: string;
+            priority?: components["schemas"]["PriorityEnum"];
+            revision?: number;
+            /** Format: uuid */
+            readonly source_document_id: string | null;
+            source_locator?: unknown;
+            review_state?: components["schemas"]["RequirementReviewStateEnum"];
+            origin?: components["schemas"]["OriginEnum"];
+            /** Format: date-time */
+            created_at?: string;
+        };
+        RequirementCreate: {
+            title: string;
+            text: string;
+            priority: components["schemas"]["PriorityEnum"];
+            /** Format: uuid */
+            source_document_id?: string | null;
+            source_locator?: unknown;
+            /** @default accepted */
+            review_state: components["schemas"]["RequirementCreateReviewStateEnum"];
+        };
+        /**
+         * @description * `draft` - draft
+         *     * `accepted` - accepted
+         * @enum {string}
+         */
+        RequirementCreateReviewStateEnum: "draft" | "accepted";
+        /**
+         * @description * `draft` - Draft
+         *     * `accepted` - Accepted
+         *     * `rejected` - Rejected
+         * @enum {string}
+         */
+        RequirementReviewStateEnum: "draft" | "accepted" | "rejected";
         Retest: {
             outcome: components["schemas"]["OutcomeEnum"];
             evidence_file_ids: string[];
@@ -869,6 +998,16 @@ export interface components {
             /** @default  */
             environment: string;
         };
+        Review: {
+            review_state: components["schemas"]["ReviewReviewStateEnum"];
+        };
+        /**
+         * @description * `accepted` - accepted
+         *     * `rejected` - rejected
+         *     * `draft` - draft
+         * @enum {string}
+         */
+        ReviewReviewStateEnum: "accepted" | "rejected" | "draft";
         /**
          * @description * `owner` - Owner
          *     * `admin` - Admin
@@ -893,6 +1032,22 @@ export interface components {
             reason: string;
             /** Format: date-time */
             until: string;
+        };
+        Source: {
+            /** Format: uuid */
+            readonly id: string;
+            kind?: components["schemas"]["Kind397Enum"];
+            title: string;
+            content_text: string;
+            page_count?: number | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        SourceCreate: {
+            title: string;
+            /** @default prd */
+            kind: components["schemas"]["Kind397Enum"];
+            content_text: string;
         };
         /**
          * @description * `draft` - draft
@@ -1779,6 +1934,102 @@ export interface operations {
             };
         };
     };
+    projects_requirements_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Requirement"][];
+                };
+            };
+        };
+    };
+    projects_requirements_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequirementCreate"];
+                "application/x-www-form-urlencoded": components["schemas"]["RequirementCreate"];
+                "multipart/form-data": components["schemas"]["RequirementCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Requirement"];
+                };
+            };
+        };
+    };
+    projects_sources_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Source"][];
+                };
+            };
+        };
+    };
+    projects_sources_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SourceCreate"];
+                "application/x-www-form-urlencoded": components["schemas"]["SourceCreate"];
+                "multipart/form-data": components["schemas"]["SourceCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Source"];
+                };
+            };
+        };
+    };
     projects_summary_retrieve: {
         parameters: {
             query?: never;
@@ -1796,6 +2047,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectSummary"];
+                };
+            };
+        };
+    };
+    requirements_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Requirement"];
+                };
+            };
+        };
+    };
+    requirements_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirements_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedRequirementUpdate"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedRequirementUpdate"];
+                "multipart/form-data": components["schemas"]["PatchedRequirementUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Requirement"];
+                };
+            };
+        };
+    };
+    requirements_review_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Review"];
+                "application/x-www-form-urlencoded": components["schemas"]["Review"];
+                "multipart/form-data": components["schemas"]["Review"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Requirement"];
                 };
             };
         };

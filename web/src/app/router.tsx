@@ -7,6 +7,7 @@ import { NotFound } from '../features/NotFound'
 import { ProjectHome } from '../features/projects/ProjectHome'
 import { ProjectsList } from '../features/projects/ProjectsList'
 import { ReleasePage } from '../features/releases/ReleasePage'
+import { RequirementsPage } from '../features/requirements/RequirementsPage'
 import { SettingsPage } from '../features/settings/SettingsPage'
 import { AppShell } from './AppShell'
 import { Gate, SignedInOnly } from './Gate'
@@ -40,6 +41,7 @@ export const router = createBrowserRouter([
       { path: 'inbox', element: <InboxPage /> },
       { path: 'projects', element: <ProjectsList /> },
       { path: 'settings', element: <SettingsPage /> },
+      { path: ':projectKey/requirements', element: <RequirementsPage /> },
       { path: ':projectKey', element: <ProjectHome /> },
       { path: ':projectKey/releases/:version', element: <ReleasePage /> },
       { path: '*', element: <NotFound /> },

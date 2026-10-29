@@ -142,9 +142,9 @@ Not engineering work, but the build gate depends on it.
 
 ## M2. Source documents, requirements and the AI core (weeks 7 to 8)
 
-- [ ] **M2-01** `source_document` (project\_id, kind: prd, screenshot\_set, qa\_report; file\_ref; page\_count). PRD upload or pasted text on the project's Sources screen (FR-PLAN-01; UX §2 screen 5).
+- [~] **M2-01** Pasted PRD/Markdown sources are stored per project and shown on the Sources screen (`api/apps/requirements/`, `web/src/features/requirements/`). File upload, malware scan, and extraction remain for M2-02.
 - [ ] **M2-02** `scan_and_parse` job: malware scan; text and images extracted with page and character positions (pdfplumber, python-docx, Markdown, plain text); OCR only as fallback; extraction stored. Queues the matching AI job when done (ARCH §5, §6).
-- [ ] **M2-03** `requirement` (display\_no, title, text, priority, revision, source\_document\_id, source\_locator, review\_state, origin). A text change raises `revision` and keeps the old provenance (G-07).
+- [~] **M2-03** Requirement records now link to a source document and exact quoted passage; edits raise `revision` and review decisions are audited. Immutable requirement revision history (G-07) remains open.
 - [ ] **M2-04** AI client in `api/ai/`, the only code that calls the provider (ARCH §4):
   - Per-feature JSON schema; document text in a clearly delimited data section; the model gets no tools (AI §6).
   - Requests built from one organisation's records only; no shared caches or indexes (AI-04).
@@ -162,7 +162,7 @@ Not engineering work, but the build gate depends on it.
   - Accept-all limited to 20 at a time; accepts under 2 seconds counted and shown to the QA lead.
   - Optional reject reason; assumptions shown on the card; the gaps list shown and copyable.
   - Every accept and reject writes the record and an audit event (FR-PLAN-04, AI-01, AI-02).
-- [ ] **M2-08** Requirements screen: list, filter, manual create and edit (origin = human). Editing text raises `revision`, which makes linked cases Stale (FR-TC-05).
+- [~] **M2-08** Requirements screen and API now support list/filter, manual create/edit, and draft accept/reject; text edits raise `revision`. Database-backed tests must run before this slice is marked done (FR-TC-05).
 - [ ] **M2-09** AI failure states with the exact messages in AI §9 (unavailable, partly dropped, gaps, allowance used up), written in the brand voice.
 - [ ] **M2-10** `tests/ai_eval/` runner: scores from AI §7 (recall, precision, coverage, keep rate, citation accuracy, report accuracy, injection pack). CI blocks a merge touching `api/ai/` if a score drops (ARCH §7).
 - [ ] **M2-11** Prompt-injection pack: at least 30 hostile documents (hidden instructions, instructions in image text, fake system messages, requests for other data). Every one must produce schema-valid output, no injected content and no record changes (AI §6, AI-03).

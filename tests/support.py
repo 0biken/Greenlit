@@ -19,6 +19,7 @@ PARAMS = {
     "version": "0.0.0",
     "defect_id": "1",
     "item_id": "requirement.00000000-0000-0000-0000-000000000000",
+    "requirement_id": "00000000-0000-0000-0000-000000000000",
 }
 
 
@@ -191,12 +192,26 @@ def seed_spine(org, project, lead, tester, upload, label: str = "Sample"):
     from apps.inbox.models import Snooze
     from apps.plans import services as plans
     from apps.reports import services as reports
+    from apps.requirements.models import SourceDocument
     from apps.requirements.services import create_requirement
     from apps.runs import services as runs
     from apps.runs.models import CaseResult
 
+    source = SourceDocument.objects.create(
+        org_id=org.id,
+        project=project,
+        kind="prd",
+        title=f"{label} product requirements",
+        content_text=f"{label} users can pay by card.",
+        created_by=lead,
+    )
     requirement = create_requirement(
-        project, lead, title=f"{label} checkout", text=f"{label} users can pay by card."
+        project,
+        lead,
+        title=f"{label} checkout",
+        text=f"{label} users can pay by card.",
+        source_document=source,
+        source_locator={"quote": f"{label} users can pay by card."},
     )
     plan = plans.create_plan(project, lead, title=f"{label} checkout plan")
     plans.add_case(
@@ -238,6 +253,7 @@ def seed_spine(org, project, lead, tester, upload, label: str = "Sample"):
     )
     return {
         "requirement": requirement,
+        "source_document": source,
         "plan": plan,
         "release": release,
         "run": run,

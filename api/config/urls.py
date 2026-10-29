@@ -15,6 +15,7 @@ from apps.defects import views as defect_views
 from apps.files import views as file_views
 from apps.inbox import views as inbox_views
 from apps.reports import views as report_views
+from apps.requirements import views as requirement_views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -46,6 +47,20 @@ urlpatterns = [
     path("api/jobs/<uuid:job_id>/", views_jobs.job_detail, name="job-detail"),
     path("api/jobs/<uuid:job_id>/rerun/", views_jobs.job_rerun, name="job-rerun"),
     path("api/projects/<str:key>/files/", file_views.start_upload, name="file-upload"),
+    path("api/projects/<str:key>/sources/", requirement_views.sources, name="sources"),
+    path(
+        "api/projects/<str:key>/requirements/", requirement_views.requirements, name="requirements"
+    ),
+    path(
+        "api/requirements/<uuid:requirement_id>/review/",
+        requirement_views.review_requirement,
+        name="requirement-review",
+    ),
+    path(
+        "api/requirements/<uuid:requirement_id>/",
+        requirement_views.requirement_detail,
+        name="requirement-detail",
+    ),
     path("api/files/<uuid:file_id>/", file_views.file_detail, name="file-detail"),
     path("api/files/<uuid:file_id>/complete/", file_views.complete_upload, name="file-complete"),
     path("api/files/<uuid:file_id>/download/", file_views.download, name="file-download"),
