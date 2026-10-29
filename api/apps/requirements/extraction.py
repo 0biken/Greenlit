@@ -1,9 +1,12 @@
 """Extract approved PRD uploads into source documents (M2-02)."""
 
+import subprocess
+from io import BytesIO
 from pathlib import PurePath
 from typing import TypedDict
 
 import pdfplumber
+from django.conf import settings
 from django.db import transaction
 from docx import Document
 
@@ -14,6 +17,7 @@ from apps.files.storage import get_storage
 from apps.requirements.models import SourceDocument
 
 MAX_EXTRACTED_CHARS = 10_000_000
+OCR_TIMEOUT_SECONDS = 30
 
 
 class PageIndex(TypedDict):
@@ -27,12 +31,34 @@ def _append_page(pages: list[PageIndex], text: str, page: int | None) -> None:
     pages.append({"page": page, "start_char": start, "end_char": start + len(text)})
 
 
+def _ocr_page(page) -> str:
+    """Recognize text only on PDF pages with no selectable text."""
+    image = page.to_image(resolution=150).original
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    try:
+        result = subprocess.run(  # noqa: S603 - configured executable, fixed arguments, no shell
+            [settings.TESSERACT_CMD, "stdin", "stdout", "-l", "eng", "--psm", "3"],
+            input=buffer.getvalue(),
+            capture_output=True,
+            timeout=OCR_TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise JobFailure("Text recognition could not run for this PRD page.") from exc
+    if result.returncode != 0:
+        raise JobFailure("Text recognition could not read this PRD page.")
+    return result.stdout.decode("utf-8", errors="replace").strip()
+
+
 def _pdf(file) -> tuple[str, list[PageIndex], int]:
     pages: list[PageIndex] = []
     text_pages: list[str] = []
     with pdfplumber.open(file) as document:
         for number, page in enumerate(document.pages, start=1):
             text = page.extract_text() or ""
+            if not text.strip():
+                text = _ocr_page(page)
             _append_page(pages, text, number)
             text_pages.append(text)
     return "\n".join(text_pages), pages, len(pages)

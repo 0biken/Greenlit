@@ -303,6 +303,38 @@ def test_a_pdf_source_keeps_page_and_character_offsets(
     }
 
 
+def test_a_pdf_page_without_selectable_text_uses_ocr(
+    team, django_capture_on_commit_callbacks, monkeypatch
+):
+    from apps.requirements import extraction
+
+    class Page:
+        def extract_text(self):
+            return ""
+
+    class Pdf:
+        pages = [Page()]
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+    monkeypatch.setattr(extraction.pdfplumber, "open", lambda _file: Pdf())
+    monkeypatch.setattr(extraction, "_ocr_page", lambda _page: "Scanned acceptance criteria")
+    result = team.upload("prd", "scanned.pdf", SAMPLES["pdf"], django_capture_on_commit_callbacks)
+    [source] = team.engineer.get(
+        "/api/projects/app/sources/", headers={"X-Org": team.org.slug}
+    ).json()
+
+    assert result["state"] == "available"
+    assert source["content_text"] == "Scanned acceptance criteria"
+    assert source["extraction_index"] == [
+        {"page": 1, "start_char": 0, "end_char": len("Scanned acceptance criteria")}
+    ]
+
+
 def test_a_name_the_kind_does_not_accept_is_refused_before_upload(team):
     response = team.start("qa_report", "notes.md", 100)
     assert response.status_code == 400

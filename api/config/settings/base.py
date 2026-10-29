@@ -276,6 +276,7 @@ FILE_STORAGE_REGION = env("FILE_STORAGE_REGION", default="")
 FILE_STORAGE_ACCESS_KEY = env("FILE_STORAGE_ACCESS_KEY", default="")
 FILE_STORAGE_SECRET_KEY = env("FILE_STORAGE_SECRET_KEY", default="")
 FILE_LINK_TTL_SECONDS = 15 * 60
+TESSERACT_CMD = env("TESSERACT_CMD", default="tesseract")
 ORG_STORAGE_QUOTA_BYTES = env.int("ORG_STORAGE_QUOTA_BYTES", default=10 * 1024**3)  # starter plan
 
 # "clamav" outside development; "stub" only flags the EICAR test file (apps/files/scanner.py).
