@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, getCurrentOrg } from '../../api/client'
@@ -12,7 +12,19 @@ type Source = {
   title: string
   content_text: string
   page_count: number | null
+  extraction_index: { page: number | null; start_char: number; end_char: number }[]
+  stored_file_id: string | null
   created_at: string
+}
+
+type UploadStarted = {
+  file: { id: string }
+  upload: {
+    method: 'PUT' | 'POST'
+    url: string
+    fields: Record<string, string>
+    headers: Record<string, string>
+  }
 }
 
 type Requirement = {
@@ -23,7 +35,7 @@ type Requirement = {
   priority: 'critical' | 'high' | 'medium' | 'low'
   revision: number
   source_document_id: string | null
-  source_locator: { quote?: string; start_line?: number }
+  source_locator: { quote?: string; start_line?: number; page?: number }
   review_state: 'draft' | 'accepted' | 'rejected'
   origin: 'human' | 'ai'
   created_at: string
@@ -37,9 +49,19 @@ export function RequirementsPage() {
   const key = projectKey.toUpperCase()
   const orgKey = getCurrentOrg() ?? '-'
   const client = useQueryClient()
+  const [pendingSourceFile, setPendingSourceFile] = useState<string | null>(null)
+  useEffect(() => {
+    if (!pendingSourceFile) return
+    const timeout = window.setTimeout(() => setPendingSourceFile(null), 2 * 60 * 1000)
+    return () => window.clearTimeout(timeout)
+  }, [pendingSourceFile])
   const sources = useQuery({
     queryKey: ['org', orgKey, 'project', key, 'sources'],
     queryFn: () => api<Source[]>(`/api/projects/${encodeURIComponent(key)}/sources/`),
+    refetchInterval: (query) => {
+      if (!pendingSourceFile || query.state.data?.some((source) => source.stored_file_id === pendingSourceFile)) return false
+      return 2000
+    },
   })
   const requirements = useQuery({
     queryKey: ['org', orgKey, 'project', key, 'requirements'],
@@ -74,6 +96,39 @@ export function RequirementsPage() {
       refresh()
     },
     onError: () => setMessage('Could not save the source. Check that it has a title and text, then try again.'),
+  })
+  const uploadSource = useMutation({
+    mutationFn: async (file: File) => {
+      const started = await api<UploadStarted>(`/api/projects/${encodeURIComponent(key)}/files/`, {
+        method: 'POST',
+        body: { kind: 'prd', name: file.name, size: file.size },
+      })
+      let response: Response
+      if (started.upload.method === 'PUT') {
+        response = await fetch(started.upload.url, {
+          method: 'PUT',
+          headers: started.upload.headers,
+          body: file,
+        })
+      } else {
+        const form = new FormData()
+        for (const [name, value] of Object.entries(started.upload.fields)) form.append(name, value)
+        form.append('file', file)
+        response = await fetch(started.upload.url, { method: 'POST', body: form })
+      }
+      if (!response.ok) throw new Error('Upload failed')
+      return api<{ id: string; state: string }>(`/api/files/${started.file.id}/complete/`, {
+        method: 'POST',
+      })
+    },
+    onSuccess: (file) => {
+      setPendingSourceFile(file.id)
+      setMessage(file.state === 'available'
+        ? 'PRD uploaded and processed. It is now in Sources.'
+        : 'PRD uploaded. Malware scanning and text extraction are running in the background.')
+      refresh()
+    },
+    onError: () => setMessage('Could not upload this PRD. Check the file type and 20 MB limit, then try again.'),
   })
   const addRequirement = useMutation({
     mutationFn: () =>
@@ -148,6 +203,7 @@ export function RequirementsPage() {
 
       <section className="requirements-section" aria-labelledby="source-h">
         <h2 id="source-h" className="overline dash-h">Sources</h2>
+        <label className="requirements-upload">Upload a PRD<input type="file" accept=".pdf,.docx,.md,.markdown,.txt,.log" disabled={uploadSource.isPending} onChange={(event) => { const file = event.currentTarget.files?.[0]; if (file) uploadSource.mutate(file); event.currentTarget.value = '' }} /><span className="faint">PDF, DOCX, Markdown or plain text, up to 20 MB. Files are scanned before extraction.</span></label>
         <form className="requirements-form" onSubmit={(event) => { event.preventDefault(); addSource.mutate() }}>
           <label>Source title<input value={sourceTitle} maxLength={200} onChange={(event) => setSourceTitle(event.target.value)} required /></label>
           <label>Paste PRD or Markdown text<textarea value={sourceText} maxLength={1_000_000} rows={5} onChange={(event) => setSourceText(event.target.value)} required /></label>
@@ -155,7 +211,7 @@ export function RequirementsPage() {
         </form>
         {sources.isPending ? <SkeletonRows rows={2} /> : sources.isError ? <ErrorState message="Couldn't load sources." onRetry={() => sources.refetch()} /> : sources.data.length ? (
           <ul className="source-list">
-            {sources.data.map((source) => <li key={source.id} className="source-item"><strong>{source.title}</strong><details><summary>Read source text</summary><pre>{source.content_text}</pre></details></li>)}
+            {sources.data.map((source) => <li key={source.id} className="source-item"><strong>{source.title}</strong><span className="faint">{source.stored_file_id ? 'Uploaded document' : 'Pasted text'}{source.page_count ? ` · ${source.page_count} pages` : ''}</span><details><summary>Read source text</summary><pre>{source.content_text}</pre></details></li>)}
           </ul>
         ) : <p className="faint">No source documents yet.</p>}
       </section>
@@ -187,7 +243,7 @@ export function RequirementsPage() {
               {editing === item.id ? <RequirementEditor item={item} onCancel={() => setEditing(null)} onSave={saveEdit} saving={editRequirement.isPending} /> : <>
                 <div className="requirement-card-head"><span className="mono">REQ-{item.display_no}</span><span className={`requirement-state state-${item.review_state}`}>{word(item.review_state)}</span><span className="faint">{word(item.priority)} priority · revision {item.revision}</span></div>
                 <h3>{item.title}</h3><p>{item.text}</p>
-                {item.source_document_id ? <blockquote className="requirement-quote">“{item.source_locator.quote}” <span className="faint">· {sources.data?.find((source) => source.id === item.source_document_id)?.title ?? 'Source'}{item.source_locator.start_line ? ` · line ${item.source_locator.start_line}` : ''}</span></blockquote> : <p className="faint">No source passage linked.</p>}
+                {item.source_document_id ? <blockquote className="requirement-quote">“{item.source_locator.quote}” <span className="faint">· {sources.data?.find((source) => source.id === item.source_document_id)?.title ?? 'Source'}{item.source_locator.page ? ` · page ${item.source_locator.page}` : item.source_locator.start_line ? ` · line ${item.source_locator.start_line}` : ''}</span></blockquote> : <p className="faint">No source passage linked.</p>}
                 <div className="requirement-actions"><Button size="sm" onClick={() => setEditing(item.id)}>Edit</Button>{item.review_state === 'draft' ? <><Button size="sm" variant="primary" disabled={review.isPending} onClick={() => review.mutate({ id: item.id, review_state: 'accepted' })}>Accept</Button><Button size="sm" variant="danger" disabled={review.isPending} onClick={() => review.mutate({ id: item.id, review_state: 'rejected' })}>Reject</Button></> : null}</div>
               </>}
             </li>)}

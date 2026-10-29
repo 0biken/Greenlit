@@ -142,8 +142,8 @@ Not engineering work, but the build gate depends on it.
 
 ## M2. Source documents, requirements and the AI core (weeks 7 to 8)
 
-- [~] **M2-01** Pasted PRD/Markdown sources are stored per project and shown on the Sources screen (`api/apps/requirements/`, `web/src/features/requirements/`). File upload, malware scan, and extraction remain for M2-02.
-- [ ] **M2-02** `scan_and_parse` job: malware scan; text and images extracted with page and character positions (pdfplumber, python-docx, Markdown, plain text); OCR only as fallback; extraction stored. Queues the matching AI job when done (ARCH §5, §6).
+- [~] **M2-01** Pasted PRD/Markdown sources are stored per project and shown on the Sources screen (`api/apps/requirements/`, `web/src/features/requirements/`). Uploaded PRDs now join the source list after scanning and extraction; automated drafting and document-image handling remain open.
+- [~] **M2-02** PRD uploads now queue extraction only after malware approval; PDF text/page offsets, DOCX text, Markdown and plain text become tenant-scoped sources, and requirements can retain character/page provenance. Remaining: OCR fallback for image-only documents, embedded-image extraction, and queueing the AI drafting job (ARCH §5, §6).
 - [~] **M2-03** Requirement records now link to a source document and exact quoted passage; edits raise `revision` and review decisions are audited. Immutable requirement revision history (G-07) remains open.
 - [ ] **M2-04** AI client in `api/ai/`, the only code that calls the provider (ARCH §4):
   - Per-feature JSON schema; document text in a clearly delimited data section; the model gets no tools (AI §6).

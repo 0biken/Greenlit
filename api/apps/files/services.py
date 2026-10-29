@@ -11,6 +11,7 @@ import hashlib
 import uuid
 
 from django.conf import settings
+from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 
@@ -121,14 +122,22 @@ def scan_file(job, file_id: str) -> None:
     if refusal is not None:
         _refuse(stored, *refusal)
         return
-    StoredFile.objects.filter(pk=stored.pk).update(
-        state=FileState.AVAILABLE,
-        detected_type=detected,
-        size_bytes=size,
-        sha256=digest.hexdigest(),
-        available_at=timezone.now(),
-        updated_at=timezone.now(),
-    )
+    with transaction.atomic():
+        StoredFile.objects.filter(pk=stored.pk).update(
+            state=FileState.AVAILABLE,
+            detected_type=detected,
+            size_bytes=size,
+            sha256=digest.hexdigest(),
+            available_at=timezone.now(),
+            updated_at=timezone.now(),
+        )
+        if stored.kind == "prd":
+            enqueue(
+                "extract_prd",
+                org_id=stored.org_id,
+                user=stored.created_by,
+                file_id=str(stored.pk),
+            )
     job.set_progress(3, 3, "Ready")
 
 

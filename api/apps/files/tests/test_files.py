@@ -216,6 +216,93 @@ def test_a_document_is_accepted_for_a_prd(team, django_capture_on_commit_callbac
     assert (result["state"], result["detected_type"]) == ("available", "docx")
 
 
+def test_a_prd_upload_becomes_a_source_with_character_provenance(
+    team, django_capture_on_commit_callbacks
+):
+    content = b"# Checkout\nThe user can resume an interrupted upload.\n"
+    result = team.upload("prd", "requirements.md", content, django_capture_on_commit_callbacks)
+    sources = team.engineer.get("/api/projects/app/sources/", headers={"X-Org": team.org.slug})
+    assert sources.status_code == 200
+    [source] = sources.json()
+    assert source["title"] == "requirements"
+    assert source["stored_file_id"] == result["id"]
+    assert source["content_text"] == content.decode()
+    assert source["extraction_index"] == [
+        {"page": None, "start_char": 0, "end_char": len(content.decode())}
+    ]
+
+
+def test_a_prd_upload_extracts_docx_paragraphs_and_tables(team, django_capture_on_commit_callbacks):
+    from docx import Document
+
+    document = Document()
+    document.add_paragraph("Acceptance criteria")
+    document.add_table(rows=1, cols=1).cell(0, 0).text = "User can resume a transfer"
+    buffer = io.BytesIO()
+    document.save(buffer)
+    result = team.upload(
+        "prd", "requirements.docx", buffer.getvalue(), django_capture_on_commit_callbacks
+    )
+    source = team.engineer.get(
+        "/api/projects/app/sources/", headers={"X-Org": team.org.slug}
+    ).json()[0]
+    assert result["state"] == "available"
+    assert source["content_text"] == "Acceptance criteria\nUser can resume a transfer"
+
+
+def test_a_pdf_source_keeps_page_and_character_offsets(
+    team, django_capture_on_commit_callbacks, monkeypatch
+):
+    from apps.requirements import extraction
+
+    class Page:
+        def __init__(self, text):
+            self.text = text
+
+        def extract_text(self):
+            return self.text
+
+    class Pdf:
+        pages = [Page("Overview"), Page("Resume transfer")]
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+    monkeypatch.setattr(extraction.pdfplumber, "open", lambda _file: Pdf())
+    result = team.upload(
+        "prd", "requirements.pdf", SAMPLES["pdf"], django_capture_on_commit_callbacks
+    )
+    source = team.engineer.get(
+        "/api/projects/app/sources/", headers={"X-Org": team.org.slug}
+    ).json()[0]
+    assert result["state"] == "available"
+    assert source["page_count"] == 2
+    assert source["content_text"] == "Overview\nResume transfer"
+    assert source["extraction_index"] == [
+        {"page": 1, "start_char": 0, "end_char": 8},
+        {"page": 2, "start_char": 9, "end_char": 24},
+    ]
+    from types import SimpleNamespace
+
+    from apps.requirements.views import _validate_locator
+
+    assert _validate_locator(
+        {"quote": "Resume transfer"},
+        SimpleNamespace(
+            content_text=source["content_text"], extraction_index=source["extraction_index"]
+        ),
+    ) == {
+        "quote": "Resume transfer",
+        "start_line": 2,
+        "start_char": 9,
+        "end_char": 24,
+        "page": 2,
+    }
+
+
 def test_a_name_the_kind_does_not_accept_is_refused_before_upload(team):
     response = team.start("qa_report", "notes.md", 100)
     assert response.status_code == 400

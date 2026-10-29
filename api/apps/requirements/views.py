@@ -23,9 +23,20 @@ from apps.requirements.models import Requirement, SourceDocument
 
 
 class SourceSerializer(serializers.ModelSerializer):
+    stored_file_id = serializers.UUIDField(read_only=True, allow_null=True)
+
     class Meta:
         model = SourceDocument
-        fields = ["id", "kind", "title", "content_text", "page_count", "created_at"]
+        fields = [
+            "id",
+            "kind",
+            "title",
+            "content_text",
+            "page_count",
+            "extraction_index",
+            "stored_file_id",
+            "created_at",
+        ]
         read_only_fields = ["id", "created_at"]
 
 
@@ -65,7 +76,9 @@ class RequirementSerializer(serializers.ModelSerializer):
 class RequirementCreateSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=200)
     text = serializers.CharField(trim_whitespace=True)
-    priority = serializers.ChoiceField(choices=Requirement._meta.get_field("priority").choices)
+    priority = serializers.ChoiceField(
+        choices=Requirement._meta.get_field("priority").choices or []
+    )
     source_document_id = serializers.UUIDField(required=False, allow_null=True)
     source_locator = serializers.JSONField(required=False, default=dict)
     review_state = serializers.ChoiceField(choices=("draft", "accepted"), default="accepted")
@@ -84,7 +97,9 @@ class RequirementCreateSerializer(serializers.Serializer):
 class RequirementUpdateSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=200)
     text = serializers.CharField(trim_whitespace=True)
-    priority = serializers.ChoiceField(choices=Requirement._meta.get_field("priority").choices)
+    priority = serializers.ChoiceField(
+        choices=Requirement._meta.get_field("priority").choices or []
+    )
 
     def validate_text(self, value):
         if not value.strip():
@@ -129,8 +144,19 @@ def _validate_locator(locator: dict, source: SourceDocument | None) -> dict:
         raise serializers.ValidationError(
             {"source_locator": {"quote": "The quoted passage must appear exactly in the source."}}
         )
-    line = source.content_text.count("\n", 0, source.content_text.index(quote)) + 1
-    return {"quote": quote, "start_line": line}
+    start_char = source.content_text.index(quote)
+    line = source.content_text.count("\n", 0, start_char) + 1
+    locator = {
+        "quote": quote,
+        "start_line": line,
+        "start_char": start_char,
+        "end_char": start_char + len(quote),
+    }
+    for page in source.extraction_index:
+        if page["start_char"] <= start_char < page["end_char"]:
+            locator["page"] = page["page"]
+            break
+    return locator
 
 
 @extend_schema(methods=["GET"], responses=SourceSerializer(many=True))

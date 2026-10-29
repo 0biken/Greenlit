@@ -59,7 +59,7 @@ class RequirementRevision(TenantModel):
 
 
 class SourceDocument(TenantModel):
-    """Pasted PRD or Markdown source. File uploads and extraction are a later M2 slice."""
+    """A pasted or extracted project source with its original upload retained when applicable."""
 
     class Kind(models.TextChoices):
         PRD = "prd", "PRD"
@@ -71,6 +71,14 @@ class SourceDocument(TenantModel):
     title = models.CharField(max_length=200)
     content_text = models.TextField()
     page_count = models.PositiveIntegerField(null=True, blank=True)
+    extraction_index = models.JSONField(default=list, blank=True)
+    stored_file = models.OneToOneField(
+        "files.StoredFile",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="source_document",
+    )
 
     class Meta:
         indexes = [models.Index(fields=["org_id", "project"])]

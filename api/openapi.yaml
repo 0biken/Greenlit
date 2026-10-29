@@ -2121,6 +2121,12 @@ components:
           maximum: 2147483647
           minimum: 0
           nullable: true
+        extraction_index: {}
+        stored_file_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -2129,6 +2135,7 @@ components:
       - content_text
       - created_at
       - id
+      - stored_file_id
       - title
     SourceCreate:
       type: object

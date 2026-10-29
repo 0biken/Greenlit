@@ -20,6 +20,8 @@ from apps.core.models import (
     User,
 )
 from apps.core.tenancy import org_scope, set_scope
+from apps.files.models import StoredFile
+from apps.requirements.models import SourceDocument
 
 pytestmark = pytest.mark.django_db
 
@@ -133,6 +135,30 @@ def test_foreign_key_trigger_also_holds_for_the_owner_role(two_orgs):
     with org_scope(org_a.id):
         with pytest.raises(DatabaseError, match="cross-organisation"), transaction.atomic():
             ProjectMember.objects.create(org_id=org_a.id, project_id=project_b.id, user=user)
+
+
+def test_source_document_cannot_reference_another_organisations_file(two_orgs):
+    org_a, project_a, org_b, project_b = two_orgs
+    with org_scope(org_b.id):
+        uploaded = StoredFile.objects.create(
+            org_id=org_b.id,
+            project=project_b,
+            kind="prd",
+            original_name="requirements.md",
+            storage_key=f"{org_b.id}/{project_b.id}/{uuid.uuid4()}",
+            declared_mime="text/markdown",
+            size_bytes=10,
+        )
+    with org_scope(org_a.id):
+        with pytest.raises(DatabaseError, match="cross-organisation"), transaction.atomic():
+            SourceDocument.objects.create(
+                org_id=org_a.id,
+                project=project_a,
+                kind=SourceDocument.Kind.PRD,
+                title="Foreign source",
+                content_text="content",
+                stored_file_id=uploaded.pk,
+            )
 
 
 def test_user_sees_own_memberships_before_choosing_an_organisation(two_orgs):

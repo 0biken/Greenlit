@@ -11,6 +11,8 @@
 .requirements-check input { accent-color: var(--ink); }
 .source-list, .requirement-list { list-style: none; padding: 0; margin: 18px 0; }
 .source-item { padding: 12px 0; border-bottom: var(--hairline); display: grid; gap: 8px; }
+.requirements-upload { display: grid; gap: 6px; max-width: 720px; margin: 12px 0 20px; font-size: 13px; font-weight: 500; }
+.requirements-upload input { font: inherit; }
 .source-item summary { cursor: pointer; color: var(--ink-2); font-size: 13px; }
 .source-item pre { max-height: 280px; overflow: auto; white-space: pre-wrap; background: var(--sheet); padding: 12px; border-radius: var(--radius); font: 12px/1.6 var(--mono); }
 .requirement-list { display: grid; gap: 12px; }

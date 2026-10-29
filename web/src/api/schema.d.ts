@@ -1040,6 +1040,9 @@ export interface components {
             title: string;
             content_text: string;
             page_count?: number | null;
+            extraction_index?: unknown;
+            /** Format: uuid */
+            readonly stored_file_id: string | null;
             /** Format: date-time */
             readonly created_at: string;
         };

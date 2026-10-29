@@ -12,6 +12,13 @@ Only `apps.files` touches storage. Other modules store a file's ID and never a p
 4. The job checks the real size, identifies the content by its bytes, hashes it (SHA-256) and scans it for malware. Only then is the state `available`. A file whose content is not on the kind's list becomes `rejected`, and an infected file becomes `infected`; in both cases the stored bytes are deleted.
 5. `GET /api/files/{id}/` to poll; `GET /api/files/{id}/download/` returns a link valid for 15 minutes. Before the file is available it answers 409.
 
+An uploaded `prd` is queued for extraction only after the malware scan makes it available. PDF text
+is stored with page and character offsets; DOCX, Markdown and plain-text content is stored with
+character offsets. A successful extraction creates a source visible on the project's Sources API
+and links it to the retained upload. Image-only PDFs and embedded images are not extracted yet; OCR
+fallback is still open in M2-02. A file can therefore be available for download while its source
+extraction job is still running or has failed.
+
 Keys are `{org_id}/{project_id}/{uuid}`. Downloads are always attachments with `nosniff`, and never rendered inside the app.
 
 ## What each kind accepts
